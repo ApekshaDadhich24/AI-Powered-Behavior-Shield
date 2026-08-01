@@ -2,10 +2,10 @@ const express = require('express');
 const axios = require('axios');
 const WebSocket = require('ws');
 const User = require('../models/User');
-// --- NEW: persistence models ---
+// --- persistence models ---
 const Session = require('../models/Session');
 const ScoreEvent = require('../models/ScoreEvent');
-// --- END NEW ---
+// --- END ---
 
 const router = express.Router();
 const AI_URL = process.env.AI_URL;
@@ -67,9 +67,9 @@ const setupWebSocket = (server) => {
     const userId = req.url.split('/').pop();
     console.log(`WebSocket connected for user: ${userId}`);
 
-    // --- NEW: create a Session doc for this connection. Best-effort —
-    // if this fails, the live relay below is completely unaffected;
-    // sessionDoc just stays null and score events simply won't be saved.
+    // Create a Session doc for this connection. Best-effort — if this
+    // fails, the live relay below is completely unaffected; sessionDoc
+    // just stays null and score events simply won't be saved.
     let sessionDoc = null;
     let sessionFrameCount = 0;
     let sessionScoreSum = 0;
@@ -80,35 +80,39 @@ const setupWebSocket = (server) => {
     Session.create({ userId })
       .then((doc) => { sessionDoc = doc; })
       .catch((err) => console.log(`Session create failed for user ${userId}:`, err.message));
-    // --- END NEW ---
 
     // ============ RISK SMOOTHING STATE ============
     // Rolling window: 5 frames at a 2s send cadence ≈ last 10 seconds of behavior.
     const RISK_WINDOW_SIZE = 5;
-    // Average risk (0-100) across the window must stay above this to trigger a warning.
+    // Average risk (0-100) across the window must stay above this to trigger
+    // the softer WarningModal nudge (Phase 2 UI). This is intentionally a
+    // "trending worse" signal, not a hard cutoff — it can be noisy and is
+    // meant to be forgiving.
     const RISK_AVG_THRESHOLD = 50;
-    // OR: this many STEP_UP_AUTH verdicts in a row (within the window above)
-    // triggers a warning regardless of the average.
-    const CONSECUTIVE_STEP_UP_LIMIT = 8;
 
-    // --- NEW: hard termination threshold ---
-    // consecutiveStepUp above is capped at RISK_WINDOW_SIZE (5), so it can
-    // never tell us "this has been bad for a long time" — only "bad right
-    // now". sustainedBadFrames below is a separate, UNCAPPED counter that
-    // tracks how many consecutive frames the *smoothed* decision has been
-    // STEP_UP_AUTH. Once behavior stays bad this long, we terminate the
-    // session ourselves instead of waiting on the Python AI to ask for it.
-    // 8 frames at a 2s send cadence ≈ 16 seconds of sustained anomalous
-    // behavior. Tune this up/down depending on how strict you want it.
-    const CONSECUTIVE_TERMINATE_LIMIT = 8;
+    // Hard termination threshold — driven by the AI's raw per-frame verdict,
+    // NOT the smoothed average. This is a deliberate choice: the average can
+    // sit well under RISK_AVG_THRESHOLD even while the AI is confidently and
+    // repeatedly calling STEP_UP_AUTH frame after frame (this happened in
+    // testing — 9 consecutive STEP_UP_AUTH verdicts with avgRisk never
+    // exceeding ~42). The AI's own verdict is the ground truth for "is this
+    // frame anomalous"; sustainedBadFrames tracks accumulated bad behavior.
+    // 5 frames at a 2s send cadence ≈ 10 seconds of sustained anomalous
+    // behavior. Tune up/down depending on how strict you want it.
+    const CONSECUTIVE_TERMINATE_LIMIT = 5;
+    // A single clean frame does NOT wipe the streak back to 0 — real
+    // anomalous sessions are rarely perfectly uniform frame-to-frame, and a
+    // hard reset let one noisy "clean" verdict undo several real bad ones.
+    // Instead, a clean frame only partially forgives the count. Lower =
+    // less forgiving (closer to a pure running total); higher = closer to
+    // the old hard-reset behavior.
+    const DECAY_ON_CLEAR = 2;
     let sustainedBadFrames = 0;
-    // --- END NEW ---
 
     const GOOD_VERDICT = 'CLEAR';
     const STEP_UP_VERDICT = 'STEP_UP_AUTH';
 
     const riskHistory = [];
-    const verdictHistory = [];
 
     let aiWs = null;
     let aiReconnectTimer = null;
@@ -124,7 +128,7 @@ const setupWebSocket = (server) => {
 
       aiWs.on('open', () => {
         console.log(`AI WebSocket connected for user: ${userId}`);
-        aiReconnectAttempts = 0; 
+        aiReconnectAttempts = 0;
       });
 
       aiWs.on('message', (data) => {
@@ -139,7 +143,6 @@ const setupWebSocket = (server) => {
           console.log(`Bad JSON from AI for user ${userId}:`, err.message);
           return;
         }
-      
 
         if (response.status === 'CONNECTED') {
           ws.send(JSON.stringify(response));
@@ -153,9 +156,7 @@ const setupWebSocket = (server) => {
 
         if (response.action === 'FORCE_LOGOUT') {
           console.log(`FORCE_LOGOUT (from AI) for user ${userId}: ${response.reason}`);
-          // --- NEW ---
           sessionEndReason = 'force_logout_ai';
-          // --- END NEW ---
           ws.send(JSON.stringify(response));
           return;
         }
@@ -164,41 +165,25 @@ const setupWebSocket = (server) => {
           return;
         }
 
-        // ---- Update rolling history ----
+        // ---- Update rolling history (used for the softer avg-based warning) ----
         const latestVerdict = response.verdict || GOOD_VERDICT;
         const latestRisk = Number.isFinite(response.risk_score) ? response.risk_score : 0;
-
-        verdictHistory.push(latestVerdict);
-        if (verdictHistory.length > RISK_WINDOW_SIZE) verdictHistory.shift();
 
         riskHistory.push(latestRisk);
         if (riskHistory.length > RISK_WINDOW_SIZE) riskHistory.shift();
 
-        // ---- Consecutive STEP_UP_AUTH streak (from the tail backward, within window) ----
-        let consecutiveStepUp = 0;
-        for (let i = verdictHistory.length - 1; i >= 0; i--) {
-          if (verdictHistory[i] === STEP_UP_VERDICT) {
-            consecutiveStepUp++;
-          } else {
-            break;
-          }
-        }
-
         // ---- Rolling average risk over the window ----
         const avgRisk = riskHistory.reduce((a, b) => a + b, 0) / riskHistory.length;
 
-        // ---- Trigger conditions ----
+        // ---- Smoothed decision drives the WarningModal (Phase 2), stays avg-based ----
         const trendIsBad = avgRisk >= RISK_AVG_THRESHOLD;
-        const consecutiveIsBad = consecutiveStepUp >= CONSECUTIVE_STEP_UP_LIMIT;
-        const smoothedDecision = (trendIsBad || consecutiveIsBad) ? STEP_UP_VERDICT : GOOD_VERDICT;
+        const smoothedDecision = trendIsBad ? STEP_UP_VERDICT : GOOD_VERDICT;
 
-        // --- NEW: track sustained bad behavior across the whole session,
-        // not just the last 5 frames, and force-logout once it's persisted
-        // too long.
-        if (smoothedDecision === STEP_UP_VERDICT) {
+        // ---- Hard termination counter — driven by the AI's raw verdict ----
+        if (latestVerdict === STEP_UP_VERDICT) {
           sustainedBadFrames++;
         } else {
-          sustainedBadFrames = 0;
+          sustainedBadFrames = Math.max(0, sustainedBadFrames - DECAY_ON_CLEAR);
         }
 
         if (sustainedBadFrames >= CONSECUTIVE_TERMINATE_LIMIT) {
@@ -217,7 +202,7 @@ const setupWebSocket = (server) => {
               avgRiskScore: Math.round(avgRisk * 10) / 10,
               decision: smoothedDecision,
               rawVerdict: latestVerdict,
-              consecutiveBad: consecutiveStepUp,
+              consecutiveBad: sustainedBadFrames,
             }).catch((err) => console.log(`ScoreEvent save failed for user ${userId}:`, err.message));
           }
 
@@ -227,11 +212,10 @@ const setupWebSocket = (server) => {
           }));
           return;
         }
-        // --- END NEW ---
 
         const trustScoreValue = response.behavior_confidence ?? 100;
 
-        // --- NEW: persist this scored frame + update in-memory session summary.
+        // Persist this scored frame + update in-memory session summary.
         // Fire-and-forget — never awaited, never blocks the ws.send() below.
         if (sessionDoc) {
           sessionFrameCount++;
@@ -247,10 +231,9 @@ const setupWebSocket = (server) => {
             avgRiskScore: Math.round(avgRisk * 10) / 10,
             decision: smoothedDecision,
             rawVerdict: latestVerdict,
-            consecutiveBad: consecutiveStepUp,
+            consecutiveBad: sustainedBadFrames,
           }).catch((err) => console.log(`ScoreEvent save failed for user ${userId}:`, err.message));
         }
-        // --- END NEW ---
 
         ws.send(JSON.stringify({
           ...response,
@@ -260,7 +243,7 @@ const setupWebSocket = (server) => {
           risk_window_size: riskHistory.length,
           decision: smoothedDecision,
           raw_verdict: latestVerdict,
-          consecutive_bad: consecutiveStepUp,
+          consecutive_bad: sustainedBadFrames,
         }));
       });
 
@@ -277,9 +260,7 @@ const setupWebSocket = (server) => {
               message: 'Behavioral engine is unreachable. Retrying will not help right now.',
             }));
           }
-          // --- NEW ---
           sessionEndReason = 'ai_unavailable';
-          // --- END NEW ---
           return;
         }
 
@@ -306,9 +287,9 @@ const setupWebSocket = (server) => {
       clearTimeout(aiReconnectTimer);
       if (aiWs) aiWs.close();
 
-      // --- NEW: finalize the session doc with summary stats.
-      // Best-effort — if sessionDoc was never created (e.g. Mongo hiccup on
-      // connect), this is silently skipped; nothing here can throw upward.
+      // Finalize the session doc with summary stats. Best-effort — if
+      // sessionDoc was never created (e.g. Mongo hiccup on connect), this
+      // is silently skipped; nothing here can throw upward.
       if (sessionDoc) {
         Session.findByIdAndUpdate(sessionDoc._id, {
           endedAt: new Date(),
@@ -319,7 +300,6 @@ const setupWebSocket = (server) => {
           anomalyCount: sessionAnomalyCount,
         }).catch((err) => console.log(`Session finalize failed for user ${userId}:`, err.message));
       }
-      // --- END NEW ---
     });
 
     connectToAI();
