@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { BACKEND_URL } from '../config'
 import AuthVisualPanel from './AuthVisual'
+import StepUpOtpModal from '../components/StepUpOtpModal'
 import './AuthPage.css'
 
 export default function LoginPage() {
@@ -15,7 +16,16 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  // When a login response comes back with requiresStepUp: true, we stash
+  // the userId here and show the OTP modal instead of navigating in.
+  const [pendingStepUpUserId, setPendingStepUpUserId] = useState(null)
+
   const justRegistered = location.state?.registered
+
+  const completeLogin = ({ userId, username, is_enrolled }) => {
+    login({ userId, username, is_enrolled })
+    navigate(is_enrolled ? '/dashboard' : '/enroll')
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -40,13 +50,15 @@ export default function LoginPage() {
         return
       }
 
-      login({
-        userId: data.userId,
-        username: data.username,
-        is_enrolled: data.is_enrolled,
-      })
+      // Password was correct, but this account was force-logged-out for
+      // anomalous behavior and needs OTP verification before a session
+      // is granted. Don't log them in yet — show the modal instead.
+      if (data.requiresStepUp) {
+        setPendingStepUpUserId(data.userId)
+        return
+      }
 
-      navigate(data.is_enrolled ? '/dashboard' : '/enroll')
+      completeLogin(data)
     } catch (err) {
       setError('Could not reach the server. Is the backend running?')
     } finally {
@@ -109,6 +121,16 @@ export default function LoginPage() {
       <AuthVisualPanel
         heading={<>Your session,<br /><span className="auth-right-grad">continuously verified.</span></>}
         sub="No passwords typed twice. No waiting on a code. Just the way you already type and move."
+      />
+
+      <StepUpOtpModal
+        open={!!pendingStepUpUserId}
+        userId={pendingStepUpUserId}
+        onVerified={(data) => {
+          setPendingStepUpUserId(null)
+          completeLogin(data)
+        }}
+        onCancel={() => setPendingStepUpUserId(null)}
       />
     </div>
   )

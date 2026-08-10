@@ -8,8 +8,6 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
-  // --- NEW: email, required for account-recovery and the upcoming
-  // OTP step-up verification flow (Phase 3).
   email: {
     type: String,
     required: true,
@@ -17,7 +15,6 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
-  // --- END NEW ---
   password: {
     type: String,
     required: true
@@ -29,11 +26,16 @@ const userSchema = new mongoose.Schema({
   is_enrolled: {
     type: Boolean,
     default: false
+  },
+  // Set to true the moment a session gets FORCE_LOGOUT'd (either the AI's
+  // own call, or our sustained-anomaly counter in behavior.js). While true,
+  // /api/auth/login will not issue a normal session — the next login
+  // attempt on this account must pass OTP email verification first. Cleared
+  // automatically the moment that verification succeeds.
+  requiresStepUp: {
+    type: Boolean,
+    default: false
   }
-
-  // --- NOTE: OTP fields (otpCode, otpExpiry, failedStepUpAttempts,
-  // lockoutUntil) will be added here in Phase 3 once email delivery
-  // is confirmed working. Not needed yet — keeping this phase focused. ---
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

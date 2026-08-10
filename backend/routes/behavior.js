@@ -2,10 +2,8 @@ const express = require('express');
 const axios = require('axios');
 const WebSocket = require('ws');
 const User = require('../models/User');
-// --- persistence models ---
 const Session = require('../models/Session');
 const ScoreEvent = require('../models/ScoreEvent');
-// --- END ---
 
 const router = express.Router();
 const AI_URL = process.env.AI_URL;
@@ -67,9 +65,6 @@ const setupWebSocket = (server) => {
     const userId = req.url.split('/').pop();
     console.log(`WebSocket connected for user: ${userId}`);
 
-    // Create a Session doc for this connection. Best-effort — if this
-    // fails, the live relay below is completely unaffected; sessionDoc
-    // just stays null and score events simply won't be saved.
     let sessionDoc = null;
     let sessionFrameCount = 0;
     let sessionScoreSum = 0;
@@ -82,30 +77,20 @@ const setupWebSocket = (server) => {
       .catch((err) => console.log(`Session create failed for user ${userId}:`, err.message));
 
     // ============ RISK SMOOTHING STATE ============
-    // Rolling window: 5 frames at a 2s send cadence ≈ last 10 seconds of behavior.
     const RISK_WINDOW_SIZE = 5;
-    // Average risk (0-100) across the window must stay above this to trigger
-    // the softer WarningModal nudge (Phase 2 UI). This is intentionally a
-    // "trending worse" signal, not a hard cutoff — it can be noisy and is
-    // meant to be forgiving.
+    // Drives the softer, avg-based "elevated risk" banner in the UI. Not
+    // used for termination — see sustainedBadFrames below for that.
     const RISK_AVG_THRESHOLD = 50;
 
-    // Hard termination threshold — driven by the AI's raw per-frame verdict,
-    // NOT the smoothed average. This is a deliberate choice: the average can
-    // sit well under RISK_AVG_THRESHOLD even while the AI is confidently and
-    // repeatedly calling STEP_UP_AUTH frame after frame (this happened in
-    // testing — 9 consecutive STEP_UP_AUTH verdicts with avgRisk never
-    // exceeding ~42). The AI's own verdict is the ground truth for "is this
-    // frame anomalous"; sustainedBadFrames tracks accumulated bad behavior.
-    // 5 frames at a 2s send cadence ≈ 10 seconds of sustained anomalous
-    // behavior. Tune up/down depending on how strict you want it.
-    const CONSECUTIVE_TERMINATE_LIMIT = 5;
-    // A single clean frame does NOT wipe the streak back to 0 — real
-    // anomalous sessions are rarely perfectly uniform frame-to-frame, and a
-    // hard reset let one noisy "clean" verdict undo several real bad ones.
-    // Instead, a clean frame only partially forgives the count. Lower =
-    // less forgiving (closer to a pure running total); higher = closer to
-    // the old hard-reset behavior.
+    // Hard termination threshold — driven by the AI's raw per-frame
+    // verdict, not the smoothed average (the average rarely reaches
+    // RISK_AVG_THRESHOLD even during genuinely sustained anomalous
+    // behavior, confirmed via real testing). 7 frames at a 2s send cadence
+    // ≈ 14 seconds of sustained anomalous behavior.
+    const CONSECUTIVE_TERMINATE_LIMIT = 7;
+    // A single clean frame doesn't wipe the streak back to 0 — it only
+    // partially forgives it, since real anomalous sessions are rarely
+    // perfectly uniform frame-to-frame.
     const DECAY_ON_CLEAR = 2;
     let sustainedBadFrames = 0;
 
@@ -120,6 +105,15 @@ const setupWebSocket = (server) => {
     const AI_RECONNECT_DELAY_MS = 1500;
     const MAX_AI_RECONNECT_ATTEMPTS = 5;
     let aiReconnectAttempts = 0;
+
+    // Flags this account so the NEXT login attempt (by anyone — real user
+    // or attacker) is gated behind OTP email verification instead of a
+    // normal password-only login. Fire-and-forget, same pattern as the
+    // other persistence calls in this file — never blocks the ws relay.
+    const flagRequiresStepUp = () => {
+      User.findByIdAndUpdate(userId, { requiresStepUp: true })
+        .catch((err) => console.log(`Failed to set requiresStepUp for user ${userId}:`, err.message));
+    };
 
     const connectToAI = () => {
       aiWs = new WebSocket(
@@ -157,6 +151,7 @@ const setupWebSocket = (server) => {
         if (response.action === 'FORCE_LOGOUT') {
           console.log(`FORCE_LOGOUT (from AI) for user ${userId}: ${response.reason}`);
           sessionEndReason = 'force_logout_ai';
+          flagRequiresStepUp();
           ws.send(JSON.stringify(response));
           return;
         }
@@ -165,21 +160,17 @@ const setupWebSocket = (server) => {
           return;
         }
 
-        // ---- Update rolling history (used for the softer avg-based warning) ----
         const latestVerdict = response.verdict || GOOD_VERDICT;
         const latestRisk = Number.isFinite(response.risk_score) ? response.risk_score : 0;
 
         riskHistory.push(latestRisk);
         if (riskHistory.length > RISK_WINDOW_SIZE) riskHistory.shift();
 
-        // ---- Rolling average risk over the window ----
         const avgRisk = riskHistory.reduce((a, b) => a + b, 0) / riskHistory.length;
 
-        // ---- Smoothed decision drives the WarningModal (Phase 2), stays avg-based ----
         const trendIsBad = avgRisk >= RISK_AVG_THRESHOLD;
         const smoothedDecision = trendIsBad ? STEP_UP_VERDICT : GOOD_VERDICT;
 
-        // ---- Hard termination counter — driven by the AI's raw verdict ----
         if (latestVerdict === STEP_UP_VERDICT) {
           sustainedBadFrames++;
         } else {
@@ -189,6 +180,7 @@ const setupWebSocket = (server) => {
         if (sustainedBadFrames >= CONSECUTIVE_TERMINATE_LIMIT) {
           console.log(`FORCE_LOGOUT (sustained anomaly) for user ${userId}: ${sustainedBadFrames} consecutive bad frames`);
           sessionEndReason = 'force_logout_sustained';
+          flagRequiresStepUp();
 
           if (sessionDoc) {
             sessionFrameCount++;
@@ -208,15 +200,13 @@ const setupWebSocket = (server) => {
 
           ws.send(JSON.stringify({
             action: 'FORCE_LOGOUT',
-            reason: `Sustained anomalous behavior detected for ${sustainedBadFrames} consecutive frames (~${sustainedBadFrames * 2}s). Session terminated for your protection.`,
+            reason: `Sustained anomalous behavior detected for ${sustainedBadFrames} consecutive frames (~${sustainedBadFrames * 2}s). Session terminated for your protection. You'll need to verify your email to log back in.`,
           }));
           return;
         }
 
         const trustScoreValue = response.behavior_confidence ?? 100;
 
-        // Persist this scored frame + update in-memory session summary.
-        // Fire-and-forget — never awaited, never blocks the ws.send() below.
         if (sessionDoc) {
           sessionFrameCount++;
           sessionScoreSum += trustScoreValue;
@@ -287,9 +277,6 @@ const setupWebSocket = (server) => {
       clearTimeout(aiReconnectTimer);
       if (aiWs) aiWs.close();
 
-      // Finalize the session doc with summary stats. Best-effort — if
-      // sessionDoc was never created (e.g. Mongo hiccup on connect), this
-      // is silently skipped; nothing here can throw upward.
       if (sessionDoc) {
         Session.findByIdAndUpdate(sessionDoc._id, {
           endedAt: new Date(),

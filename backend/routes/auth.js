@@ -4,42 +4,32 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-// --- NEW: basic email format check. Not exhaustive (no library needed for
-// this) — just catches obviously malformed input before it hits the DB.
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// --- END NEW ---
 
 // REGISTER
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password } = req.body;
 
-    // --- NEW: validate email presence/format ---
     if (!email || !EMAIL_REGEX.test(email.trim())) {
       return res.status(400).json({ message: 'Please enter a valid email address' });
     }
-    // --- END NEW ---
 
-    // Check if user already exists
     const existingUser = await User.findOne({ username: username.toLowerCase() });
     if (existingUser) {
       return res.status(400).json({ message: 'Username already taken' });
     }
 
-    // --- NEW: check email isn't already registered ---
     const existingEmail = await User.findOne({ email: email.toLowerCase().trim() });
     if (existingEmail) {
       return res.status(400).json({ message: 'An account with this email already exists' });
     }
-    // --- END NEW ---
 
-    // Encrypt the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Save new user to MongoDB
     const newUser = new User({
       username: username.toLowerCase(),
-      email: email.toLowerCase().trim(), // --- NEW ---
+      email: email.toLowerCase().trim(),
       password: hashedPassword
     });
     await newUser.save();
@@ -56,17 +46,28 @@ router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Find user in database
     const user = await User.findOne({ username: username.toLowerCase() });
     if (!user) {
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
-    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid username or password' });
     }
+
+    // --- NEW: account was force-logged-out for anomalous behavior since
+    // the last successful login. Password alone is no longer enough —
+    // don't issue a session yet. Frontend sees requiresStepUp: true and
+    // shows the OTP modal instead of navigating in. Deliberately omitting
+    // is_enrolled/username here until they're actually verified.
+    if (user.requiresStepUp) {
+      return res.json({
+        requiresStepUp: true,
+        userId: user._id,
+      });
+    }
+    // --- END NEW ---
 
     res.json({
       message: 'Login successful',

@@ -21,9 +21,8 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/behavior', behaviorRoutes);
-// --- NEW ---
 app.use('/api/sessions', sessionsRoutes);
-// --- END NEW ---
+app.use('/api/auth', require('./routes/stepUpAuth'));
 
 // Health check
 app.get('/health', (req, res) => {

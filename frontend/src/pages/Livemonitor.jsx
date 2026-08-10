@@ -10,17 +10,18 @@ const SEND_INTERVAL_MS = 2000
 const RECONNECT_DELAY_MS = 3000
 const GOOD_VERDICT = 'CLEAR'
 
-// Rough scale for the activity meters — not a hard cap, just what "full bar"
-// represents visually. Keys: ~15 keydowns in a 2s burst is fast but normal.
-// Mouse: sampled every 50ms, so 2s of continuous movement ≈ 40 samples.
+// Purely informational heads-up, shown a couple frames before the
+// backend's hard termination threshold (7, see behavior.js
+// CONSECUTIVE_TERMINATE_LIMIT). No action required from the user here —
+// verification for a force-logged-out account now happens at re-login,
+// not mid-session. This just gives fair warning that continuing to
+// behave this way will end the session.
+const WARNING_TRIGGER_FRAMES = 5
+
 const KEY_METER_MAX = 15
 const MOUSE_METER_MAX = 40
-
-// How many past scored frames to keep for the sparkline trend — separate
-// from the 8-row visible log feed, so history isn't lost as fast.
 const SCORE_HISTORY_MAX = 40
 
-// --- Piano layout: one real octave, white + black keys ---
 const WHITE_NOTES = [
   { key: 'a', name: 'C', freq: 261.63 },
   { key: 's', name: 'D', freq: 293.66 },
@@ -31,8 +32,6 @@ const WHITE_NOTES = [
   { key: 'j', name: 'B', freq: 493.88 },
   { key: 'k', name: 'C5', freq: 523.25 },
 ]
-// afterIndex = sits on the boundary right after that white key index.
-// Real piano skips a black key between E-F (index 2-3) and B-C (index 6-7).
 const BLACK_NOTES = [
   { key: 'w', name: 'C#', freq: 277.18, afterIndex: 0 },
   { key: 'e', name: 'D#', freq: 311.13, afterIndex: 1 },
@@ -40,17 +39,12 @@ const BLACK_NOTES = [
   { key: 'y', name: 'G#', freq: 415.3, afterIndex: 4 },
   { key: 'u', name: 'A#', freq: 466.16, afterIndex: 5 },
 ]
-const WK = 52 // white key width (px)
+const WK = 52
 const GAP = 4
 const SLOT = WK + GAP
-const BK = 30 // black key width (px)
+const BK = 30
 const KEY_COLORS = ['#60a5fa', '#a78bfa', '#22d3ee']
 
-// Suggested rhythm — mapped to the white-key letters (a s d f g h j k =
-// C D E F G A B C5). Guides the user toward a natural, repeatable typing
-// pattern instead of random mashing, without ever blocking free typing.
-// Ode to Joy (Beethoven's 9th), first phrase: E E F G | G F E D | C C D E | E D D
-// Happy Birthday, opening two lines: C C D C F E | C C D C G F
 const TUNE = ['a', 'a', 's', 'a', 'f', 'd', 'a', 'a', 's', 'a', 'g', 'f']
 const TUNE_NAME = 'Happy Birthday'
 const TUNE_FREQS = { a: 261.63, s: 293.66, d: 329.63, f: 349.23, g: 392.0, h: 440.0, j: 493.88, k: 523.25 }
@@ -58,9 +52,6 @@ const TUNE_FREQS = { a: 261.63, s: 293.66, d: 329.63, f: 349.23, g: 392.0, h: 44
 function TrustGauge({ score, status }) {
   const pct = score == null ? 0 : Math.max(0, Math.min(100, score))
   const color = score == null ? '#94a3b8' : pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#f43f5e'
-  // Clock-degrees (0 = 12 o'clock, clockwise): sweep runs from 240deg (8 o'clock,
-  // low/red) through the top to 120deg (4 o'clock, high/green) — a classic
-  // 240-degree speedometer sweep with the gap at the bottom.
   const needleDeg = 240 + (pct / 100) * 240
 
   return (
@@ -200,9 +191,6 @@ function SignalMeter({ icon, label, count, max, active }) {
   )
 }
 
-// Real piano-style strip: white + black keys, invert color on press like a
-// physical key, plus volume/octave/sustain/reverb controls so the mouse
-// gets pulled in too, out of curiosity.
 function PianoStrip() {
   const [activeKeys, setActiveKeys] = useState({})
   const [nowPlaying, setNowPlaying] = useState(null)
@@ -291,8 +279,6 @@ function PianoStrip() {
     }
   }
 
-  // Safari (and some mobile browsers) only unlock audio on a pointer
-  // gesture, not a keydown — so grab the first click/tap anywhere too.
   useEffect(() => {
     const unlock = () => {
       ensureAudio()
@@ -356,9 +342,6 @@ function PianoStrip() {
 
   const wrapWidth = WHITE_NOTES.length * SLOT - GAP
 
-  // Plays the actual melody at a fixed, musical tempo — separate from
-  // playTone's live-typing envelope — so the user can hear what the tune
-  // is actually supposed to sound like before trying to follow it.
   const playPreview = () => {
     const ctx = ensureAudio()
     if (!ctx || isPreviewing) return
@@ -456,8 +439,6 @@ function PianoStrip() {
   )
 }
 
-// Canvas doodle pad — pure continuous mouse-movement signal, fades on its
-// own so there's nothing to "finish" or manage.
 function ScribblePad() {
   const canvasRef = useRef(null)
   const drawingRef = useRef(false)
@@ -554,6 +535,8 @@ export default function LiveMonitor() {
   const [scoreHistory, setScoreHistory] = useState([])
   const [lockoutReason, setLockoutReason] = useState(null)
   const [signals, setSignals] = useState({ keys: 0, mouseMoves: 0, mouseClicks: 0, keysActive: false, mouseActive: false })
+  const [showWarning, setShowWarning] = useState(false)
+  const warningDismissedRef = useRef(false)
 
   const wsRef = useRef(null)
 
@@ -561,6 +544,29 @@ export default function LiveMonitor() {
     const detach = attachListeners(document)
     return () => { if (detach) detach() }
   }, [attachListeners])
+
+  // Purely visual — no request fired, nothing to verify. Shows once
+  // consecutiveBad crosses the warning threshold, auto-hides the moment
+  // behavior recovers (consecutiveBad drops back to 0) or the session
+  // gets force-logged-out (handled separately by the lockout banner).
+  // If the user manually closes it (the × button), it stays closed for
+  // the rest of this bad streak — no point re-trapping them every frame —
+  // and only becomes eligible to show again once behavior fully recovers
+  // and a new streak starts.
+  useEffect(() => {
+    if (status !== 'live') {
+      setShowWarning(false)
+      return
+    }
+    if (consecutiveBad === 0) {
+      warningDismissedRef.current = false
+      setShowWarning(false)
+      return
+    }
+    if (consecutiveBad >= WARNING_TRIGGER_FRAMES && !warningDismissedRef.current) {
+      setShowWarning(true)
+    }
+  }, [consecutiveBad, status])
 
   const handleCalibrationTyping = async () => {
     if (isSubmitting) return;
@@ -776,6 +782,60 @@ export default function LiveMonitor() {
           Elevated risk detected — sustained unusual behavior over the last ~10 seconds. Keep interacting normally; this clears automatically once your rhythm settles.
         </div>
       )}
+
+      <AnimatePresence>
+        {showWarning && status === 'live' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 150, pointerEvents: 'none',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 10 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              style={{
+                position: 'relative',
+                width: '100%', maxWidth: 380, background: '#0f172a',
+                border: '1px solid rgba(244,63,94,0.35)', borderRadius: 16,
+                padding: '28px 26px', boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+                textAlign: 'center', pointerEvents: 'auto',
+              }}
+            >
+              <button
+                onClick={() => {
+                  warningDismissedRef.current = true
+                  setShowWarning(false)
+                }}
+                aria-label="Dismiss warning"
+                style={{
+                  position: 'absolute', top: 12, right: 12,
+                  width: 28, height: 28, borderRadius: 8, border: 'none',
+                  background: 'rgba(148,163,184,0.12)', color: '#94a3b8',
+                  fontSize: 15, lineHeight: 1, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+              <div style={{ fontSize: 26, marginBottom: 8 }}>⚠️</div>
+              <h3 style={{ margin: '0 0 8px', color: '#f1f5f9', fontSize: 17 }}>Unusual activity detected</h3>
+              <p style={{ color: '#94a3b8', fontSize: 13.5, lineHeight: 1.5, margin: 0 }}>
+                Your typing and mouse behavior have looked anomalous for a while now. If this continues, your session will be ended automatically for your protection.
+              </p>
+              <p style={{ color: '#64748b', fontSize: 12, marginTop: 12, marginBottom: 0 }}>
+                Keep interacting normally — this closes on its own once your rhythm settles.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* HERO — trust gauge is the first thing you see, no scrolling needed */}
       <div className="lm-hero">
