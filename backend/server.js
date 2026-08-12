@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const { router: behaviorRoutes, setupWebSocket } = require('./routes/behavior');
 // --- NEW ---
 const sessionsRoutes = require('./routes/sessions');
+const profileRoutes = require('./routes/profile');
 // --- END NEW ---
 
 const app = express();
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/behavior', behaviorRoutes);
 app.use('/api/sessions', sessionsRoutes);
+app.use('/api/profile', profileRoutes); // NEW
 app.use('/api/auth', require('./routes/stepUpAuth'));
 
 // Health check

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import LiveMonitor from './LiveMonitor'
 import SessionAnalytics from './SessionAnalytics'
+import Profile from './Profile'
 import { BehaviorSocketProvider } from '../context/BehaviorSocketContext'
 import './Dashboard.css'
 
@@ -43,13 +44,7 @@ export default function Dashboard() {
       <div className="dash-content">
         {tab === 'live' && <LiveMonitor />}
         {tab === 'analytics' && <SessionAnalytics />}
-        {tab === 'profile' && (
-          <div className="dash-placeholder">
-            <div className="dash-placeholder-icon">👤</div>
-            <div className="dash-placeholder-title">Profile</div>
-            <div className="dash-placeholder-sub">Coming next — account details, re-enrollment, session preferences.</div>
-          </div>
-        )}
+        {tab === 'profile' && <Profile />}
       </div>
   </div>
   </BehaviorSocketProvider>
