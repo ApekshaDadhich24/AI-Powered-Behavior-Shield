@@ -29,6 +29,34 @@ function scoreColor(score) {
   return score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#f43f5e'
 }
 
+function CountUp({ value, duration = 700, suffix = '' }) {
+  const [display, setDisplay] = useState(0)
+  const prevRef = useRef(0)
+
+  useEffect(() => {
+    if (typeof value !== 'number' || Number.isNaN(value)) return
+    const start = prevRef.current
+    const end = value
+    const startTime = performance.now()
+    let raf
+    const tick = (now) => {
+      const progress = Math.min(1, (now - startTime) / duration)
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(Math.round(start + (end - start) * eased))
+      if (progress < 1) {
+        raf = requestAnimationFrame(tick)
+      } else {
+        prevRef.current = end
+      }
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value, duration])
+
+  if (typeof value !== 'number' || Number.isNaN(value)) return <>{value}</>
+  return <>{display}{suffix}</>
+}
+
 function EndReasonBadge({ session }) {
   const isActive = !session.endedAt
   if (isActive) {
@@ -38,7 +66,15 @@ function EndReasonBadge({ session }) {
   return <span className={`sa-badge sa-badge-${meta.tone}`}>{meta.label}</span>
 }
 
-// ============ #6 — Aggregate stats bar ============
+const statContainerVariants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+}
+const statCardVariants = {
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
+}
+
 function AggregateStats({ sessions }) {
   const stats = useMemo(() => {
     const total = sessions.length
@@ -49,40 +85,168 @@ function AggregateStats({ sessions }) {
     return { total, overallAvg, incidents, totalFrames }
   }, [sessions])
 
+  const cards = [
+    { key: 'sessions',  icon: '📅', color: '#60a5fa', label: 'Sessions tracked',       val: stats.total, sub: 'last 50', numeric: true },
+    { key: 'trust',     icon: '🛡',  color: '#22d3ee', label: 'Overall avg trust',      val: stats.overallAvg == null ? null : Math.round(stats.overallAvg), sub: 'across all sessions', numeric: stats.overallAvg != null, suffix: '%' },
+    { key: 'incidents', icon: '⚠',  color: '#f43f5e', label: 'Force-logout incidents', val: stats.incidents, sub: stats.incidents ? 'needs a look' : 'all clear', numeric: true },
+    { key: 'frames',    icon: '📈', color: '#a78bfa', label: 'Frames scored',          val: stats.totalFrames, sub: 'total data points', numeric: true },
+  ]
+
   return (
-    <div className="lm-card sa-aggregate-bar">
-      <div className="sa-agg-stat">
-        <span className="sa-agg-val">{stats.total}</span>
-        <span className="sa-agg-label">Sessions (last 50)</span>
+    <motion.div className="sa-stat-grid" variants={statContainerVariants} initial="hidden" animate="show">
+      {cards.map((c) => (
+        <motion.div
+          key={c.key}
+          className="sa-stat-card"
+          style={{ '--accent': c.color }}
+          variants={statCardVariants}
+          whileHover={{ y: -3 }}
+        >
+          <div className="sa-stat-icon">{c.icon}</div>
+          <div className="sa-stat-body">
+            <div className="sa-stat-val">
+              {c.numeric ? <CountUp value={c.val} suffix={c.suffix ?? ''} /> : (c.val ?? '—')}
+            </div>
+            <div className="sa-stat-label">{c.label}</div>
+            <div className="sa-stat-sub">{c.sub}</div>
+          </div>
+        </motion.div>
+      ))}
+    </motion.div>
+  )
+}
+
+// ============ Trust waveform — replaces raw numbers with a shape ============
+function TrustWaveform({ days }) {
+  const recent = days.slice(-20)
+  const fmtDay = (key) => new Date(key).toLocaleDateString([], { month: 'short', day: 'numeric' })
+  const hasAnyData = recent.some((d) => d.avg != null)
+
+  return (
+    <div className="sa-waveform">
+      <div className="sa-waveform-head">
+        <span className="sa-waveform-label">Last 20 days</span>
+        {hasAnyData && <span className="sa-waveform-hint">Bars = trust that day · dots = no session</span>}
       </div>
-      <div className="sa-agg-stat">
-        <span className="sa-agg-val" style={{ color: scoreColor(stats.overallAvg) }}>
-          {stats.overallAvg == null ? '—' : `${Math.round(stats.overallAvg)}%`}
-        </span>
-        <span className="sa-agg-label">Overall avg trust</span>
-      </div>
-      <div className="sa-agg-stat">
-        <span className="sa-agg-val" style={{ color: stats.incidents > 0 ? '#f43f5e' : undefined }}>{stats.incidents}</span>
-        <span className="sa-agg-label">Force-logout incidents</span>
-      </div>
-      <div className="sa-agg-stat">
-        <span className="sa-agg-val">{stats.totalFrames}</span>
-        <span className="sa-agg-label">Total frames scored</span>
+
+      {!hasAnyData ? (
+        <div className="sa-waveform-empty">
+          <span className="sa-waveform-empty-icon">📊</span>
+          Your trust trend will show up here once you've completed a few sessions.
+        </div>
+      ) : (
+        <div className="sa-waveform-bars">
+          {recent.map((d, i) => (
+            d.avg == null ? (
+              <div key={d.key} className="sa-waveform-empty-day" title={`${fmtDay(d.key)}: no session`}>
+                <span className="sa-waveform-dot" />
+              </div>
+            ) : (
+              <motion.div
+                key={d.key}
+                className="sa-waveform-bar"
+                style={{ background: scoreColor(d.avg) }}
+                initial={{ height: 0 }}
+                animate={{ height: `${Math.max(8, d.avg)}%` }}
+                transition={{ duration: 0.5, delay: i * 0.02, ease: 'easeOut' }}
+                title={`${fmtDay(d.key)}: ${Math.round(d.avg)}% avg trust`}
+              />
+            )
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============ Session outcome donut — replaces raw numbers with a shape ============
+function OutcomeDonut({ sessions }) {
+  const { segments, total } = useMemo(() => {
+    const counts = { normal: 0, incidents: 0, active: 0, aiDown: 0 }
+    sessions.forEach((s) => {
+      if (!s.endedAt) counts.active++
+      else if (INCIDENT_REASONS.includes(s.endReason)) counts.incidents++
+      else if (s.endReason === 'ai_unavailable') counts.aiDown++
+      else counts.normal++
+    })
+    const segs = [
+      { key: 'normal', label: 'Ended normally', value: counts.normal, color: '#22c55e' },
+      { key: 'active', label: 'Active now', value: counts.active, color: '#22d3ee' },
+      { key: 'incidents', label: 'Force logout', value: counts.incidents, color: '#f43f5e' },
+      { key: 'aiDown', label: 'AI unavailable', value: counts.aiDown, color: '#f59e0b' },
+    ].filter((s) => s.value > 0)
+    return { segments: segs, total: sessions.length }
+  }, [sessions])
+
+  if (!total) {
+    return <div className="sa-donut-block sa-donut-empty">No sessions yet.</div>
+  }
+
+  const R = 52
+  const CX = 66, CY = 66
+  const CIRC = 2 * Math.PI * R
+  let cumulative = 0
+
+  return (
+    <div className="sa-donut-block">
+      <motion.svg
+        viewBox="0 0 132 132"
+        className="sa-donut-svg"
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      >
+        <circle cx={CX} cy={CY} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="15" />
+        {segments.map((seg) => {
+          const len = (seg.value / total) * CIRC
+          const dashArray = `${len} ${CIRC - len}`
+          const dashOffset = -cumulative
+          cumulative += len
+          return (
+            <circle
+              key={seg.key}
+              cx={CX}
+              cy={CY}
+              r={R}
+              fill="none"
+              stroke={seg.color}
+              strokeWidth="15"
+              strokeDasharray={dashArray}
+              strokeDashoffset={dashOffset}
+              strokeLinecap="round"
+              transform={`rotate(-90 ${CX} ${CY})`}
+            />
+          )
+        })}
+        <text x={CX} y={CY - 4} textAnchor="middle" className="sa-donut-total">{total}</text>
+        <text x={CX} y={CY + 13} textAnchor="middle" className="sa-donut-total-label">SESSIONS</text>
+      </motion.svg>
+
+      <div className="sa-donut-legend">
+        {segments.map((seg) => (
+          <div key={seg.key} className="sa-donut-legend-item">
+            <span className="sa-donut-dot" style={{ background: seg.color }} />
+            <span className="sa-donut-legend-label">{seg.label}</span>
+            <span className="sa-donut-legend-pct">{Math.round((seg.value / total) * 100)}%</span>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
 
-// ============ #2 — Calendar heatmap ============
+// ============ Calendar heatmap + waveform + donut, replacing the old numbers grid ============
 function CalendarHeatmap({ sessions }) {
   const dayMap = useMemo(() => {
     const map = {}
     sessions.forEach((s) => {
-      if (s.avgTrustScore == null) return
       const day = new Date(s.startedAt).toISOString().slice(0, 10)
-      if (!map[day]) map[day] = { sum: 0, count: 0 }
-      map[day].sum += s.avgTrustScore
+      if (!map[day]) map[day] = { sum: 0, count: 0, scoredCount: 0 }
       map[day].count += 1
+      if (s.avgTrustScore != null) {
+        map[day].sum += s.avgTrustScore
+        map[day].scoredCount += 1
+      }
     })
     return map
   }, [sessions])
@@ -96,7 +260,8 @@ function CalendarHeatmap({ sessions }) {
       d.setDate(d.getDate() - i)
       const key = d.toISOString().slice(0, 10)
       const entry = dayMap[key]
-      arr.push({ key, date: d, avg: entry ? entry.sum / entry.count : null })
+      const avg = entry && entry.scoredCount ? entry.sum / entry.scoredCount : null
+      arr.push({ key, date: d, avg })
     }
     return arr
   }, [dayMap])
@@ -112,26 +277,37 @@ function CalendarHeatmap({ sessions }) {
     return '#f43f5e'
   }
 
+  const fmtDay = (key) => new Date(key).toLocaleDateString([], { month: 'short', day: 'numeric' })
+
   return (
-    <div className="sa-heatmap">
-      <div className="sa-heatmap-grid">
-        {padded.map((d, i) => (
-          <div
-            key={i}
-            className="sa-heatmap-cell"
-            style={{ background: d ? cellColor(d.avg) : 'transparent' }}
-            title={d ? `${d.date.toLocaleDateString([], { month: 'short', day: 'numeric' })}: ${d.avg == null ? 'No sessions' : Math.round(d.avg) + '% avg trust'}` : ''}
-          />
-        ))}
+    <div className="sa-heatmap-row">
+      <div className="sa-heatmap">
+        <div className="sa-heatmap-grid">
+          {padded.map((d, i) => (
+            <motion.div
+              key={i}
+              className="sa-heatmap-cell"
+              style={{ background: d ? cellColor(d.avg) : 'transparent' }}
+              title={d ? `${fmtDay(d.key)}: ${d.avg == null ? 'No sessions' : Math.round(d.avg) + '% avg trust'}` : ''}
+              initial={d ? { opacity: 0, scale: 0.4 } : false}
+              animate={d ? { opacity: 1, scale: 1 } : false}
+              transition={{ duration: 0.25, delay: Math.min(i * 0.003, 0.4), ease: 'easeOut' }}
+              whileHover={d ? { scale: 1.3 } : undefined}
+            />
+          ))}
+        </div>
+        <div className="sa-heatmap-legend">
+          <span>Lower trust</span>
+          <span className="sa-heatmap-swatch" style={{ background: '#f43f5e' }} />
+          <span className="sa-heatmap-swatch" style={{ background: '#f59e0b' }} />
+          <span className="sa-heatmap-swatch" style={{ background: '#84cc16' }} />
+          <span className="sa-heatmap-swatch" style={{ background: '#22c55e' }} />
+          <span>Higher trust</span>
+        </div>
       </div>
-      <div className="sa-heatmap-legend">
-        <span>Lower trust</span>
-        <span className="sa-heatmap-swatch" style={{ background: '#f43f5e' }} />
-        <span className="sa-heatmap-swatch" style={{ background: '#f59e0b' }} />
-        <span className="sa-heatmap-swatch" style={{ background: '#84cc16' }} />
-        <span className="sa-heatmap-swatch" style={{ background: '#22c55e' }} />
-        <span>Higher trust</span>
-      </div>
+
+      <TrustWaveform days={days} />
+      <OutcomeDonut sessions={sessions} />
     </div>
   )
 }
@@ -168,7 +344,6 @@ function SessionListItem({ session, active, onClick }) {
   )
 }
 
-// ============ #7 — Timeline with anomaly-streak annotations ============
 function TimelineChart({ events }) {
   const svgRef = useRef(null)
   const [hoverIdx, setHoverIdx] = useState(null)
@@ -208,12 +383,15 @@ function TimelineChart({ events }) {
 
   return (
     <div className="sa-chart-wrap">
-      <svg
+      <motion.svg
         ref={svgRef}
         viewBox={`0 0 ${w} ${h}`}
         className="sa-chart-svg"
         onMouseMove={handleMove}
         onMouseLeave={() => setHoverIdx(null)}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4 }}
       >
         <defs>
           <linearGradient id="sa-area-grad" x1="0" y1="0" x2="0" y2="1">
@@ -233,7 +411,17 @@ function TimelineChart({ events }) {
         })}
 
         <path d={areaPath} fill="url(#sa-area-grad)" stroke="none" />
-        <path d={linePath} fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <motion.path
+          d={linePath}
+          fill="none"
+          stroke="#60a5fa"
+          strokeWidth="2"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+        />
 
         {points.map((p, i) => p.e.decision && p.e.decision !== GOOD_VERDICT && (
           <circle key={i} cx={p.x} cy={p.y} r={3} fill="#f43f5e" stroke="#0b0f1a" strokeWidth="1" />
@@ -245,7 +433,7 @@ function TimelineChart({ events }) {
         {hover && (
           <circle cx={hover.x} cy={hover.y} r={4.5} fill={scoreColor(hover.e.trustScore)} stroke="#0b0f1a" strokeWidth="1.5" />
         )}
-      </svg>
+      </motion.svg>
 
       {hover && (
         <div className="sa-chart-tooltip" style={{ left: `${(hover.x / w) * 100}%` }}>
@@ -287,7 +475,10 @@ export default function SessionAnalytics() {
         if (cancelled) return
         const list = data.sessions ?? []
         setSessions(list)
-        if (list.length > 0) setSelectedId(list[0]._id)
+        if (list.length > 0) {
+          const withData = list.find((s) => (s.frameCount ?? 0) > 0)
+          setSelectedId((withData ?? list[0])._id)
+        }
       })
       .catch(() => { if (!cancelled) setSessionsError('Could not load session history.') })
       .finally(() => { if (!cancelled) setLoadingSessions(false) })
@@ -310,13 +501,11 @@ export default function SessionAnalytics() {
   const selectedSession = sessions.find((s) => s._id === selectedId)
   const recentEvents = useMemo(() => [...events].reverse().slice(0, 8), [events])
 
-  // #4 — incident-only filter
   const filteredSessions = useMemo(() => {
     if (!incidentsOnly) return sessions
     return sessions.filter((s) => INCIDENT_REASONS.includes(s.endReason))
   }, [sessions, incidentsOnly])
 
-  // #5 — export selected session as JSON
   const exportSession = () => {
     if (!selectedSession) return
     const payload = { session: selectedSession, events }
@@ -333,11 +522,16 @@ export default function SessionAnalytics() {
     <div className="sa-page">
       <AggregateStats sessions={sessions} />
 
-      <div className="lm-card sa-heatmap-card">
+      <motion.div
+        className="lm-card sa-heatmap-card"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15 }}
+      >
         <div className="lm-card-title">Trust over time</div>
         <div className="sa-heatmap-sub">Daily average trust score, based on your last {sessions.length} sessions</div>
         <CalendarHeatmap sessions={sessions} />
-      </div>
+      </motion.div>
 
       <div className="sa-layout">
         <div className="lm-card sa-session-list-card">

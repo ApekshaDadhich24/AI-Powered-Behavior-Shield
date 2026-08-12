@@ -646,3 +646,137 @@
   .sa-session-list-card { max-height: 320px; }
   .sa-export-btn { margin-left: 0; }
 }
+/* ============ SESSION ANALYTICS — v2 visual polish ============ */
+/* Append below the sa-* rules you already added. */
+
+.sa-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.sa-stat-card {
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(255,255,255,0.04);
+  border: 0.5px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 18px 20px;
+  position: relative; overflow: hidden;
+}
+.sa-stat-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--accent), transparent 65%);
+  opacity: 0.1; pointer-events: none;
+}
+.sa-stat-icon {
+  width: 38px; height: 38px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  font-size: 17px; flex-shrink: 0; z-index: 1;
+}
+.sa-stat-body { display: flex; flex-direction: column; gap: 2px; z-index: 1; }
+.sa-stat-val { font-family: var(--font-mono); font-size: 21px; font-weight: 700; color: var(--text); }
+.sa-stat-label { font-size: 11px; color: var(--text2); font-weight: 600; }
+.sa-stat-sub { font-size: 10px; color: var(--text3); }
+
+@media (max-width: 860px) {
+  .sa-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* Heatmap row: grid on the left, insights filling the remaining width
+   so there's no dead space to the right of the narrow cell grid. */
+/* ============ SESSION ANALYTICS — v3 ============ */
+/* /* ============ SESSION ANALYTICS — v4 ============ */
+/* This REPLACES the .sa-heatmap-row / .sa-heatmap-insights / .sa-insight
+   block from the previous message. Delete that old block from
+   Dashboard.css and paste this in its place. Everything else you've
+   already added (sa-stat-grid, sa-badge, sa-chart-*, etc.) stays as-is. */
+
+.sa-heatmap-row {
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sa-heatmap { flex: 0 0 auto; }
+
+/* Trust waveform */
+.sa-waveform {
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 220px;
+}
+.sa-waveform-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+}
+.sa-waveform-label {
+  font-size: 10.5px; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.sa-waveform-hint { font-size: 10px; color: var(--text3); }
+
+.sa-waveform-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 100px;
+}
+.sa-waveform-bar {
+  flex: 1;
+  border-radius: 3px 3px 1px 1px;
+  min-height: 6px;
+  transition: opacity 0.15s ease;
+}
+.sa-waveform-bar:hover { opacity: 0.75; }
+
+.sa-waveform-empty-day {
+  flex: 1; height: 100%;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.sa-waveform-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(255,255,255,0.18); margin-bottom: 2px;
+}
+
+.sa-waveform-empty {
+  height: 100px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; text-align: center;
+  font-size: 12px; color: var(--text3); padding: 0 12px;
+}
+.sa-waveform-empty-icon { font-size: 20px; opacity: 0.6; }
+
+/* Outcome donut */
+.sa-donut-block {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  min-width: 240px;
+}
+.sa-donut-empty {
+  font-size: 12.5px; color: var(--text3);
+}
+.sa-donut-svg { width: 120px; height: 120px; flex-shrink: 0; }
+.sa-donut-total { font-family: var(--font-mono); font-size: 21px; font-weight: 700; fill: var(--text); }
+.sa-donut-total-label { font-size: 8px; fill: var(--text3); letter-spacing: 0.08em; }
+
+.sa-donut-legend { display: flex; flex-direction: column; gap: 9px; }
+.sa-donut-legend-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--text2); white-space: nowrap;
+}
+.sa-donut-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.sa-donut-legend-pct {
+  margin-left: auto; padding-left: 14px;
+  font-family: var(--font-mono); font-weight: 700; color: var(--text);
+}
+
+@media (max-width: 700px) {
+  .sa-heatmap-row { flex-direction: column; align-items: stretch; gap: 24px; }
+  .sa-donut-block { justify-content: flex-start; }
+}
