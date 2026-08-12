@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import LiveMonitor from './LiveMonitor'
+import SessionAnalytics from './SessionAnalytics'
+import { BehaviorSocketProvider } from '../context/BehaviorSocketContext'
 import './Dashboard.css'
 
 const TABS = [
@@ -16,6 +18,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState('live')
 
   return (
+     <BehaviorSocketProvider>
     <div className="dash-page">
       <div className="dash-topbar">
         <div className="dash-brand"><span className="dash-brand-shield">🛡</span> BehaviorShield</div>
@@ -39,13 +42,7 @@ export default function Dashboard() {
 
       <div className="dash-content">
         {tab === 'live' && <LiveMonitor />}
-        {tab === 'analytics' && (
-          <div className="dash-placeholder">
-            <div className="dash-placeholder-icon">📊</div>
-            <div className="dash-placeholder-title">Session Analytics</div>
-            <div className="dash-placeholder-sub">Coming next — historical trust trends, session history, anomaly timeline.</div>
-          </div>
-        )}
+        {tab === 'analytics' && <SessionAnalytics />}
         {tab === 'profile' && (
           <div className="dash-placeholder">
             <div className="dash-placeholder-icon">👤</div>
@@ -54,6 +51,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-    </div>
+  </div>
+  </BehaviorSocketProvider>
   )
 }

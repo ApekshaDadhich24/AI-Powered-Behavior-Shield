@@ -3,7 +3,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function sendOtpEmail(toEmail, otpCode) {
   const { data, error } = await resend.emails.send({
-    from: 'BehaviorShield <onboarding@resend.dev>',
+    from: 'BehaviorShield <otp@mail.behaviorshield.dadhichapeksha.in>',
     to: toEmail,
     subject: 'Your BehaviorShield Verification Code',
     html: `

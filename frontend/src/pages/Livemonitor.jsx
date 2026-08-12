@@ -1,26 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useBehavior } from '../hooks/useBehavior'
+import { useBehaviorSocket } from '../context/BehaviorSocketContext'
 import { BACKEND_URL } from '../config'
 
-const WS_URL = BACKEND_URL.replace(/^http/, 'ws')
-const SEND_INTERVAL_MS = 2000
-const RECONNECT_DELAY_MS = 3000
 const GOOD_VERDICT = 'CLEAR'
-
-// Purely informational heads-up, shown a couple frames before the
-// backend's hard termination threshold (7, see behavior.js
-// CONSECUTIVE_TERMINATE_LIMIT). No action required from the user here —
-// verification for a force-logged-out account now happens at re-login,
-// not mid-session. This just gives fair warning that continuing to
-// behave this way will end the session.
-const WARNING_TRIGGER_FRAMES = 5
 
 const KEY_METER_MAX = 15
 const MOUSE_METER_MAX = 40
-const SCORE_HISTORY_MAX = 40
 
 const WHITE_NOTES = [
   { key: 'a', name: 'C', freq: 261.63 },
@@ -49,7 +37,7 @@ const TUNE = ['a', 'a', 's', 'a', 'f', 'd', 'a', 'a', 's', 'a', 'g', 'f']
 const TUNE_NAME = 'Happy Birthday'
 const TUNE_FREQS = { a: 261.63, s: 293.66, d: 329.63, f: 349.23, g: 392.0, h: 440.0, j: 493.88, k: 523.25 }
 
-function TrustGauge({ score, status }) {
+function TrustGauge({ score }) {
   const pct = score == null ? 0 : Math.max(0, Math.min(100, score))
   const color = score == null ? '#94a3b8' : pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#f43f5e'
   const needleDeg = 240 + (pct / 100) * 240
@@ -513,8 +501,7 @@ function ScribblePad() {
 }
 
 export default function LiveMonitor() {
-  const { user, logout, updateUser } = useAuth()
-  const navigate = useNavigate()
+  const { user, updateUser } = useAuth()
   const { getEvents, clearEvents, attachListeners } = useBehavior()
 
   const [isCalibrating, setIsCalibrating] = useState(!user?.is_enrolled)
@@ -522,51 +509,14 @@ export default function LiveMonitor() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [calibError, setCalibError] = useState('')
 
-  const [status, setStatus] = useState('connecting')
-  const [trustScore, setTrustScore] = useState(null)
-  const [riskScore, setRiskScore] = useState(null)
-  const [avgRiskScore, setAvgRiskScore] = useState(null)
-  const [riskWindowSize, setRiskWindowSize] = useState(null)
-  const [decision, setDecision] = useState(null)
-  const [consecutiveBad, setConsecutiveBad] = useState(0)
-  const [rawVerdict, setRawVerdict] = useState(null)
-  const [logs, setLogs] = useState([])
-  const [expandedLogId, setExpandedLogId] = useState(null)
-  const [scoreHistory, setScoreHistory] = useState([])
-  const [lockoutReason, setLockoutReason] = useState(null)
-  const [signals, setSignals] = useState({ keys: 0, mouseMoves: 0, mouseClicks: 0, keysActive: false, mouseActive: false })
-  const [showWarning, setShowWarning] = useState(false)
-  const warningDismissedRef = useRef(false)
-
-  const wsRef = useRef(null)
-
+  // Only needed while calibrating — keydowns are counted from a separate,
+  // local event buffer so they don't get tangled up with the shared
+  // continuous-monitoring buffer that lives in BehaviorSocketContext.
   useEffect(() => {
+    if (!isCalibrating) return
     const detach = attachListeners(document)
     return () => { if (detach) detach() }
-  }, [attachListeners])
-
-  // Purely visual — no request fired, nothing to verify. Shows once
-  // consecutiveBad crosses the warning threshold, auto-hides the moment
-  // behavior recovers (consecutiveBad drops back to 0) or the session
-  // gets force-logged-out (handled separately by the lockout banner).
-  // If the user manually closes it (the × button), it stays closed for
-  // the rest of this bad streak — no point re-trapping them every frame —
-  // and only becomes eligible to show again once behavior fully recovers
-  // and a new streak starts.
-  useEffect(() => {
-    if (status !== 'live') {
-      setShowWarning(false)
-      return
-    }
-    if (consecutiveBad === 0) {
-      warningDismissedRef.current = false
-      setShowWarning(false)
-      return
-    }
-    if (consecutiveBad >= WARNING_TRIGGER_FRAMES && !warningDismissedRef.current) {
-      setShowWarning(true)
-    }
-  }, [consecutiveBad, status])
+  }, [isCalibrating, attachListeners])
 
   const handleCalibrationTyping = async () => {
     if (isSubmitting) return;
@@ -604,124 +554,13 @@ export default function LiveMonitor() {
     }
   };
 
-  useEffect(() => {
-    if (!user?.userId) return
-    if (isCalibrating) return
-    if (wsRef.current) return
+  const {
+    status, trustScore, riskScore, avgRiskScore, riskWindowSize,
+    decision, consecutiveBad, rawVerdict, logs, scoreHistory,
+    lockoutReason, signals, showWarning, dismissWarning,
+  } = useBehaviorSocket()
 
-    let ws
-    let sendInterval
-    let reconnectTimer
-    let closedByUs = false
-
-    const lockdown = (reason) => {
-      closedByUs = true
-      clearInterval(sendInterval)
-      clearTimeout(reconnectTimer)
-      setStatus('locked')
-      setLockoutReason(reason || 'Session terminated due to anomalous behavior.')
-      if (wsRef.current) wsRef.current.close(1000, 'force_logout')
-      setTimeout(() => {
-        logout?.()
-        navigate('/login', { replace: true })
-      }, 2500)
-    }
-
-    const connect = () => {
-      setStatus('connecting')
-      clearEvents()
-      ws = new WebSocket(`${WS_URL}/ws/auth/${user.userId}`)
-      wsRef.current = ws
-
-      ws.onopen = () => {
-        setStatus('live')
-        sendInterval = setInterval(() => {
-          const now = Date.now()
-          const events = getEvents().filter(e => now - e.timestamp <= SEND_INTERVAL_MS)
-
-          const keydownCount = events.filter(e => e.type === 'key_down').length
-          const mouseMoveCount = events.filter(e => e.type === 'mouse_move').length
-          const mouseClickCount = events.filter(e => e.type === 'mouse_down').length
-
-          setSignals({
-            keys: keydownCount,
-            mouseMoves: mouseMoveCount,
-            mouseClicks: mouseClickCount,
-            keysActive: keydownCount > 0,
-            mouseActive: mouseMoveCount > 0 || mouseClickCount > 0,
-          })
-
-          if (keydownCount >= 3 && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-              events,
-              context: {
-                km_from_last_login: 0,
-                hours_since_last_login: 1,
-                is_trusted_device: true,
-              },
-            }))
-          }
-          clearEvents()
-        }, SEND_INTERVAL_MS)
-      }
-
-      ws.onmessage = (msg) => {
-        try {
-          const data = JSON.parse(msg.data)
-
-          if (data.status === 'CONNECTED') return
-          if (data.status === 'WAITING') return
-          if (data.action === 'FORCE_LOGOUT') {
-            lockdown(data.reason)
-            return
-          }
-          if (data.status !== 'PROCESSED') return
-
-          const score = data.trust_score ?? data.behavior_confidence ?? null
-          const dec = data.decision ?? GOOD_VERDICT
-
-          setTrustScore(score)
-          setRiskScore(data.risk_score ?? null)
-          setAvgRiskScore(data.avg_risk_score ?? null)
-          setRiskWindowSize(data.risk_window_size ?? null)
-          setDecision(dec)
-          setConsecutiveBad(data.consecutive_bad ?? 0)
-          setRawVerdict(data.raw_verdict ?? null)
-          setLogs((prev) => [
-            { id: `${Date.now()}-${Math.random()}`, time: new Date(), score, decision: dec, raw: data.raw_verdict ?? null, avgRisk: data.avg_risk_score ?? null },
-            ...prev,
-          ].slice(0, 8))
-          setScoreHistory((prev) => [...prev, score ?? 0].slice(-SCORE_HISTORY_MAX))
-        } catch (err) {
-          // ignore malformed frames
-        }
-      }
-
-      ws.onclose = () => {
-        clearInterval(sendInterval)
-        if (!closedByUs) {
-          setStatus('reconnecting')
-          reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS)
-        }
-      }
-
-      ws.onerror = () => {
-        setStatus('error')
-      }
-    }
-
-    connect()
-
-    return () => {
-      closedByUs = true
-      clearInterval(sendInterval)
-      clearTimeout(reconnectTimer)
-      if (wsRef.current) {
-          wsRef.current.close()
-          wsRef.current = null
-      }
-    }
-  }, [user?.userId, getEvents, clearEvents, logout, navigate, isCalibrating])
+  const [expandedLogId, setExpandedLogId] = useState(null)
 
   if (isCalibrating) {
     return (
@@ -809,10 +648,7 @@ export default function LiveMonitor() {
               }}
             >
               <button
-                onClick={() => {
-                  warningDismissedRef.current = true
-                  setShowWarning(false)
-                }}
+                onClick={dismissWarning}
                 aria-label="Dismiss warning"
                 style={{
                   position: 'absolute', top: 12, right: 12,
@@ -840,7 +676,7 @@ export default function LiveMonitor() {
       {/* HERO — trust gauge is the first thing you see, no scrolling needed */}
       <div className="lm-hero">
         <div className="lm-card lm-hero-card">
-          <TrustGauge score={trustScore} status={status} />
+          <TrustGauge score={trustScore} />
           <div className="lm-hero-side">
             <VerdictBadge decision={decision} />
             <div className="lm-risk-row" title="Risk score for this single frame, sent every ~2 seconds.">
