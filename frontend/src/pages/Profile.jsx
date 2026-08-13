@@ -83,11 +83,20 @@ export default function Profile() {
 
   const [savingPrefs, setSavingPrefs] = useState(false)
 
+  // Email change flow
   const [emailStep, setEmailStep] = useState('idle') // idle | editing | code
   const [newEmail, setNewEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [emailMsg, setEmailMsg] = useState('')
   const [emailBusy, setEmailBusy] = useState(false)
+
+  // Password change flow
+  const [pwStep, setPwStep] = useState('idle') // idle | editing
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwMsg, setPwMsg] = useState('')
+  const [pwBusy, setPwBusy] = useState(false)
 
   const [relBusy, setRelBusy] = useState(false)
   const [confirmRelogin, setConfirmRelogin] = useState(false)
@@ -174,6 +183,7 @@ export default function Profile() {
     }
   }
 
+  // --- Email change handlers ---
   const requestEmailChange = async () => {
     if (!newEmail.trim()) return
     setEmailBusy(true)
@@ -227,6 +237,48 @@ export default function Profile() {
     setEmailMsg('')
   }
 
+  // --- Password change handlers ---
+  const submitPasswordChange = async () => {
+    setPwMsg('')
+    if (newPw.length < 8) {
+      setPwMsg('New password must be at least 8 characters.')
+      return
+    }
+    if (newPw !== confirmPw) {
+      setPwMsg('New passwords do not match.')
+      return
+    }
+    setPwBusy(true)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/profile/${user.userId}/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not update password')
+      setProfile((p) => ({ ...p, passwordChangedAt: data.passwordChangedAt }))
+      setPwStep('idle')
+      setCurrentPw('')
+      setNewPw('')
+      setConfirmPw('')
+      setPwMsg('Password updated.')
+    } catch (err) {
+      setPwMsg(err.message)
+    } finally {
+      setPwBusy(false)
+    }
+  }
+
+  const cancelPasswordChange = () => {
+    setPwStep('idle')
+    setCurrentPw('')
+    setNewPw('')
+    setConfirmPw('')
+    setPwMsg('')
+  }
+
+  // --- Force re-login ---
   const handleForceRelogin = async () => {
     if (!confirmRelogin) {
       setConfirmRelogin(true)
@@ -243,6 +295,7 @@ export default function Profile() {
     }
   }
 
+  // --- API key ---
   const handleRegenerateKey = async () => {
     setRegenBusy(true)
     try {
@@ -273,6 +326,10 @@ export default function Profile() {
   const joined = profile.createdAt
     ? new Date(profile.createdAt).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
     : '—'
+
+  const pwLastChanged = profile.passwordChangedAt
+    ? new Date(profile.passwordChangedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+    : 'Never changed'
 
   return (
     <div className="pf-page">
@@ -364,6 +421,7 @@ export default function Profile() {
       <motion.div className="lm-card" variants={cardVariants} initial="hidden" animate="show" transition={{ delay: 0.15 }}>
         <div className="lm-card-title">Account</div>
 
+        {/* Email */}
         <div className="pf-account-row">
           <div className="pf-account-row-text">
             <div className="pf-account-row-label">Email address</div>
@@ -415,6 +473,56 @@ export default function Profile() {
 
         {emailMsg && <div className="pf-inline-msg">{emailMsg}</div>}
 
+        {/* Password */}
+        <div className="pf-account-row" style={{ marginTop: 18 }}>
+          <div className="pf-account-row-text">
+            <div className="pf-account-row-label">Password</div>
+            <div className="pf-account-row-sub">Last changed: {pwLastChanged}</div>
+          </div>
+          {pwStep === 'idle' && (
+            <button className="pf-secondary-btn" onClick={() => setPwStep('editing')}>Change</button>
+          )}
+        </div>
+
+        {pwStep === 'editing' && (
+          <div className="pf-inline-form">
+            <input
+              type="password"
+              className="pf-input"
+              placeholder="Current password"
+              value={currentPw}
+              onChange={(e) => setCurrentPw(e.target.value)}
+            />
+            <input
+              type="password"
+              className="pf-input"
+              placeholder="New password (min 8 characters)"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+            />
+            <input
+              type="password"
+              className="pf-input"
+              placeholder="Confirm new password"
+              value={confirmPw}
+              onChange={(e) => setConfirmPw(e.target.value)}
+            />
+            <div className="pf-inline-form-actions">
+              <button
+                className="pf-primary-btn"
+                onClick={submitPasswordChange}
+                disabled={pwBusy || !currentPw || !newPw || !confirmPw}
+              >
+                {pwBusy ? 'Updating…' : 'Update password'}
+              </button>
+              <button className="pf-link-btn" onClick={cancelPasswordChange}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {pwMsg && <div className="pf-inline-msg">{pwMsg}</div>}
+
+        {/* Force re-login */}
         <div className="pf-account-row" style={{ marginTop: 18 }}>
           <div className="pf-account-row-text">
             <div className="pf-account-row-label">Force re-login</div>

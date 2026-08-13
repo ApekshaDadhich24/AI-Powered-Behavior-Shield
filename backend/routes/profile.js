@@ -1,5 +1,6 @@
 const express = require('express');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const router = express.Router();
 const User = require('../models/User');
 const Otp = require('../models/Otp');
@@ -20,6 +21,7 @@ function publicProfile(user) {
     createdAt: user.createdAt,
     alertPreferences: user.alertPreferences,
     apiKey: user.apiKey,
+    passwordChangedAt: user.passwordChangedAt,
   };
 }
 
@@ -138,6 +140,39 @@ router.post('/:userId/change-email/verify', async (req, res) => {
   } catch (err) {
     console.error('Change-email verify error:', err);
     res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// POST change password — requires current password as verification
+router.post('/:userId/change-password', async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+
+    const user = await User.findById(req.params.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.status(400).json({ error: 'New password must be different from current password' });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.passwordChangedAt = new Date();
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated', passwordChangedAt: user.passwordChangedAt });
+  } catch (err) {
+    console.error('Change-password error:', err);
+    res.status(500).json({ error: 'Failed to update password' });
   }
 });
 

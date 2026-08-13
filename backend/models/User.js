@@ -28,11 +28,16 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Set to true the moment a session gets FORCE_LOGOUT'd (either the AI's
+  // own call, or our sustained-anomaly counter in behavior.js). While true,
+  // /api/auth/login will not issue a normal session — the next login
+  // attempt on this account must pass OTP email verification first. Cleared
+  // automatically the moment that verification succeeds.
   requiresStepUp: {
     type: Boolean,
     default: false
   },
-  // --- NEW: Profile tab fields ---
+  // --- Profile tab fields ---
   avatarBase64: {
     type: String,
     default: null
@@ -50,8 +55,13 @@ const userSchema = new mongoose.Schema({
   apiKey: {
     type: String,
     default: () => `bs_live_${crypto.randomBytes(16).toString('hex')}`
+  },
+  // Set on successful password change (used for a "last changed" display).
+  passwordChangedAt: {
+    type: Date,
+    default: null
   }
-  // --- END NEW ---
+  // --- END Profile tab fields ---
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

@@ -783,6 +783,15 @@
 
 /* ============ PROFILE ============ */
 
+/* ============================================================
+   PROFILE TAB STYLES
+   Paste this entire block at the very end of your existing
+   frontend/src/pages/Dashboard.css — nothing above it needs
+   to change, this only ADDS new classes (pf-*) used by
+   Profile.jsx. It reuses .lm-card, .sa-badge, .sa-status-msg
+   etc. that already exist earlier in the file.
+   ============================================================ */
+
 .pf-page {
   display: flex;
   flex-direction: column;
