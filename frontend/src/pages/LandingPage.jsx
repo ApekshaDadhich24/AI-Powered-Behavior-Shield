@@ -685,14 +685,14 @@ export default function LandingPage() {
           <span>🛡</span>
           <div>
             <div className="footer-brand">BehaviorShield</div>
-            <div className="footer-copy">© 2025 BehaviorShield AI · All rights reserved</div>
+            <div className="footer-copy">© 2026 BehaviorShield AI · All rights reserved</div>
+            <div className="footer-copy"> Made by <a href="https://github.com/ApekshaDadhich24" target="_blank" rel="noopener noreferrer"><span style={{ fontWeight: 'bold' }}>Apeksha Dadhich</span></a>
+            </div>
           </div>
         </div>
         <div className="footer-links">
-          <span className="footer-link">Privacy</span>
-          <span className="footer-link">Terms</span>
-          <span className="footer-link">Docs</span>
-          <span className="footer-link">GitHub</span>
+        <a href="https://github.com/ApekshaDadhich24/AI-Powered-Behavior-Shield" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
+        <a href="https://github.com/ApekshaDadhich24/AI-Powered-Behavior-Shield#readme" target="_blank" rel="noopener noreferrer" className="footer-link">Docs</a>
         </div>
       </footer>
     </div>
