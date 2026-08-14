@@ -692,7 +692,7 @@ export default function LandingPage() {
         </div>
         <div className="footer-links">
         <a href="https://github.com/ApekshaDadhich24/AI-Powered-Behavior-Shield" target="_blank" rel="noopener noreferrer" className="footer-link">GitHub</a>
-        <a href="https://github.com/ApekshaDadhich24/AI-Powered-Behavior-Shield#readme" target="_blank" rel="noopener noreferrer" className="footer-link">Docs</a>
+        <a href="https://drive.google.com/file/d/1Cx2zs9TR1fA3T7yXEzrq2QSOegzBxxIP/view?usp=sharing" target="_blank" rel="noopener noreferrer" className="footer-link">Docs</a>
         </div>
       </footer>
     </div>
