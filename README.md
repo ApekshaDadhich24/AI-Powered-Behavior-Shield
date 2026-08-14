@@ -91,8 +91,4 @@ npm run dev
 **Apeksha Dadhich**
 [GitHub](https://github.com/ApekshaDadhich24) · [LinkedIn](#)
 
----
 
-## 📄 License
-
-*(Add your license of choice — MIT is common for portfolio projects.)*
