@@ -17,7 +17,7 @@ export default function CustomCursor() {
     };
 
     const animate = () => {
-      // lerp — ring smoothly follows mouse with delay
+      
       ring.current.x += (mouse.current.x - ring.current.x) * 0.12;
       ring.current.y += (mouse.current.y - ring.current.y) * 0.12;
 

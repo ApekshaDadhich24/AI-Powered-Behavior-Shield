@@ -1,9 +1,5 @@
 import { useRef, useCallback } from 'react';
 
-// Sampling interval for mousemove — raw mousemove can fire hundreds of times
-// per second, which would flood the payload and the AI service for no real
-// gain in signal. ~20 samples/sec is enough to reconstruct trajectory,
-// speed, and jitter without the noise.
 const MOUSE_SAMPLE_INTERVAL_MS = 50;
 
 export function useBehavior() {
@@ -11,9 +7,7 @@ export function useBehavior() {
   const lastMouseSampleRef = useRef(0);
 
   const onKeyDown = useCallback((e) => {
-    // Ignore OS key-repeat (holding a key down fires many keydowns with no
-    // matching keyup in between). Unpaired repeats desync the AI's
-    // dwell/flight-time pairing logic and can crash the scoring step.
+   
     if (e.repeat) return;
 
     events.current.push({
@@ -71,8 +65,7 @@ export function useBehavior() {
     events.current = [];
   }, []);
 
-  // Keyboard-only listeners — used when you need typing capture scoped to
-  // a specific focused element (e.g. the hidden input on EnrollPage).
+  
   const attachKeyListeners = useCallback((element) => {
     if (!element) return;
     element.addEventListener('keydown', onKeyDown);
@@ -83,8 +76,7 @@ export function useBehavior() {
     };
   }, [onKeyDown, onKeyUp]);
 
-  // Mouse-only listeners — used when you want movement tracked across a
-  // whole container regardless of what has keyboard focus.
+  
   const attachMouseListeners = useCallback((element) => {
     if (!element) return;
     element.addEventListener('mousemove', onMouseMove);
@@ -97,9 +89,7 @@ export function useBehavior() {
     };
   }, [onMouseMove, onMouseDown, onMouseUp]);
 
-  // Combined listeners on a single element — used by LiveMonitor, which
-  // attaches everything to `document` and has no separate focused input
-  // to worry about double-counting against.
+
   const attachListeners = useCallback((element) => {
     if (!element) return;
     element.addEventListener('keydown', onKeyDown);

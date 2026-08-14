@@ -5,8 +5,6 @@
   background: var(--bg);
 }
 
-/* ============ LEFT — FORM SIDE ============ */
-
 .auth-left {
   position: relative;
   display: flex;
@@ -74,7 +72,6 @@
 
 .auth-hint { font-size: 11px; color: var(--text3); margin-top: 6px; }
 
-/* ============ RIGHT — LIVE PIPELINE PANEL ============ */
 
 .auth-right {
   position: relative;
@@ -178,7 +175,6 @@
 }
 @keyframes badgePulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-/* ============ RESPONSIVE ============ */
 
 @media (max-width: 960px) {
   .auth-page { grid-template-columns: 1fr; }

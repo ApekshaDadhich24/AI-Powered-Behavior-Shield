@@ -56,18 +56,14 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid username or password' });
     }
 
-    // --- NEW: account was force-logged-out for anomalous behavior since
-    // the last successful login. Password alone is no longer enough —
-    // don't issue a session yet. Frontend sees requiresStepUp: true and
-    // shows the OTP modal instead of navigating in. Deliberately omitting
-    // is_enrolled/username here until they're actually verified.
+    // 
     if (user.requiresStepUp) {
       return res.json({
         requiresStepUp: true,
         userId: user._id,
       });
     }
-    // --- END NEW ---
+    
 
     res.json({
       message: 'Login successful',

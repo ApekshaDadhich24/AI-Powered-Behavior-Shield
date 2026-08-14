@@ -16,7 +16,7 @@ function readStoredUser() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(readStoredUser)
 
-  // call after a successful /api/auth/login response
+  
   const login = useCallback((userData) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData))
     setUser(userData)
@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
     setUser(null)
   }, [])
 
-  // e.g. flipping is_enrolled to true once enrollment finishes
+  
   const updateUser = useCallback((partial) => {
     setUser(prev => {
       const next = { ...prev, ...partial }

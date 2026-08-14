@@ -122,7 +122,7 @@
 
 .lm-card-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 
-/* ============ HERO (trust gauge — first thing on screen) ============ */
+/* ============ HERO (trust gauge) ============ */
 
 .lm-hero { max-width: 1000px; margin-bottom: 14px; }
 
@@ -431,7 +431,7 @@
   max-width: 1000px;
 }
 
-/* LOG CARD */
+
 .lm-log-card { display: flex; flex-direction: column; }
 .lm-log-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 14px; }
 .lm-log-feed { display: flex; flex-direction: column; gap: 8px; flex: 1; }
@@ -484,7 +484,7 @@
 .lm-trend-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
 .lm-sparkline { width: 100%; height: 44px; }
 
-/* ============ RESPONSIVE ============ */
+
 
 @media (max-width: 860px) {
   .lm-grid { grid-template-columns: 1fr; }
@@ -515,7 +515,6 @@
   max-width: 1200px;
 }
 
-/* Aggregate stats bar */
 .sa-aggregate-bar {
   display: flex; flex-wrap: wrap; gap: 32px;
 }
@@ -523,7 +522,6 @@
 .sa-agg-val { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--text); }
 .sa-agg-label { font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; }
 
-/* Calendar heatmap */
 .sa-heatmap-sub { font-size: 11.5px; color: var(--text3); margin-bottom: 14px; }
 .sa-heatmap-grid {
   display: grid;
@@ -646,8 +644,7 @@
   .sa-session-list-card { max-height: 320px; }
   .sa-export-btn { margin-left: 0; }
 }
-/* ============ SESSION ANALYTICS — v2 visual polish ============ */
-/* Append below the sa-* rules you already added. */
+
 
 .sa-stat-grid {
   display: grid;
@@ -682,14 +679,6 @@
   .sa-stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* Heatmap row: grid on the left, insights filling the remaining width
-   so there's no dead space to the right of the narrow cell grid. */
-/* ============ SESSION ANALYTICS — v3 ============ */
-/* /* ============ SESSION ANALYTICS — v4 ============ */
-/* This REPLACES the .sa-heatmap-row / .sa-heatmap-insights / .sa-insight
-   block from the previous message. Delete that old block from
-   Dashboard.css and paste this in its place. Everything else you've
-   already added (sa-stat-grid, sa-badge, sa-chart-*, etc.) stays as-is. */
 
 .sa-heatmap-row {
   display: flex;
@@ -700,7 +689,7 @@
 
 .sa-heatmap { flex: 0 0 auto; }
 
-/* Trust waveform */
+
 .sa-waveform {
   flex: 1 1 260px;
   display: flex;
@@ -749,7 +738,7 @@
 }
 .sa-waveform-empty-icon { font-size: 20px; opacity: 0.6; }
 
-/* Outcome donut */
+
 .sa-donut-block {
   flex: 1 1 260px;
   display: flex;
@@ -783,14 +772,6 @@
 
 /* ============ PROFILE ============ */
 
-/* ============================================================
-   PROFILE TAB STYLES
-   Paste this entire block at the very end of your existing
-   frontend/src/pages/Dashboard.css — nothing above it needs
-   to change, this only ADDS new classes (pf-*) used by
-   Profile.jsx. It reuses .lm-card, .sa-badge, .sa-status-msg
-   etc. that already exist earlier in the file.
-   ============================================================ */
 
 .pf-page {
   display: flex;

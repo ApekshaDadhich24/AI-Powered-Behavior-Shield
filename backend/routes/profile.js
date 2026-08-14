@@ -8,8 +8,7 @@ const { generateOtp, hashOtp } = require('../utils/otp');
 const { sendOtpEmail } = require('../utils/mailer');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_AVATAR_BASE64_LEN = 300_000; // ~220KB decoded, generous ceiling after client-side compression
-
+const MAX_AVATAR_BASE64_LEN = 300_000; 
 function publicProfile(user) {
   return {
     userId: user._id,
@@ -25,7 +24,7 @@ function publicProfile(user) {
   };
 }
 
-// GET profile — auto-backfills apiKey for users created before this field existed
+
 router.get('/:userId', async (req, res) => {
   try {
     const user = await User.findById(req.params.userId);
@@ -42,7 +41,7 @@ router.get('/:userId', async (req, res) => {
   }
 });
 
-// PUT avatar — pass { avatarBase64: null } to clear back to initials
+
 router.put('/:userId/avatar', async (req, res) => {
   try {
     const { avatarBase64 } = req.body;
@@ -61,7 +60,7 @@ router.put('/:userId/avatar', async (req, res) => {
   }
 });
 
-// PUT alert preferences
+
 router.put('/:userId/preferences', async (req, res) => {
   try {
     const { alertPreferences } = req.body;
@@ -77,7 +76,7 @@ router.put('/:userId/preferences', async (req, res) => {
   }
 });
 
-// POST change-email request — sends OTP to the NEW address, stores it as pending
+
 router.post('/:userId/change-email/request', async (req, res) => {
   try {
     const { newEmail } = req.body;
@@ -111,7 +110,7 @@ router.post('/:userId/change-email/request', async (req, res) => {
   }
 });
 
-// POST change-email verify — confirms code, swaps email over
+
 router.post('/:userId/change-email/verify', async (req, res) => {
   try {
     const { code } = req.body;
@@ -143,7 +142,7 @@ router.post('/:userId/change-email/verify', async (req, res) => {
   }
 });
 
-// POST change password — requires current password as verification
+
 router.post('/:userId/change-password', async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -176,7 +175,6 @@ router.post('/:userId/change-password', async (req, res) => {
   }
 });
 
-// POST force re-login — sets requiresStepUp so next login needs OTP
 router.post('/:userId/force-relogin', async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(
@@ -191,7 +189,7 @@ router.post('/:userId/force-relogin', async (req, res) => {
   }
 });
 
-// POST regenerate API key
+
 router.post('/:userId/regenerate-key', async (req, res) => {
   try {
     const newKey = `bs_live_${crypto.randomBytes(16).toString('hex')}`;

@@ -116,7 +116,7 @@ function AggregateStats({ sessions }) {
   )
 }
 
-// ============ Trust waveform — replaces raw numbers with a shape ============
+
 function TrustWaveform({ days }) {
   const recent = days.slice(-20)
   const fmtDay = (key) => new Date(key).toLocaleDateString([], { month: 'short', day: 'numeric' })
@@ -159,7 +159,7 @@ function TrustWaveform({ days }) {
   )
 }
 
-// ============ Session outcome donut — replaces raw numbers with a shape ============
+
 function OutcomeDonut({ sessions }) {
   const { segments, total } = useMemo(() => {
     const counts = { normal: 0, incidents: 0, active: 0, aiDown: 0 }
@@ -235,7 +235,7 @@ function OutcomeDonut({ sessions }) {
   )
 }
 
-// ============ Calendar heatmap + waveform + donut, replacing the old numbers grid ============
+
 function CalendarHeatmap({ sessions }) {
   const dayMap = useMemo(() => {
     const map = {}

@@ -31,7 +31,7 @@ function compressImageToBase64(file) {
         canvas.height = AVATAR_TARGET_PX
         const ctx = canvas.getContext('2d')
 
-        // center-crop to square before resizing
+       
         const side = Math.min(img.width, img.height)
         const sx = (img.width - side) / 2
         const sy = (img.height - side) / 2
@@ -83,15 +83,15 @@ export default function Profile() {
 
   const [savingPrefs, setSavingPrefs] = useState(false)
 
-  // Email change flow
-  const [emailStep, setEmailStep] = useState('idle') // idle | editing | code
+  
+  const [emailStep, setEmailStep] = useState('idle') 
   const [newEmail, setNewEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [emailMsg, setEmailMsg] = useState('')
   const [emailBusy, setEmailBusy] = useState(false)
 
-  // Password change flow
-  const [pwStep, setPwStep] = useState('idle') // idle | editing
+  
+  const [pwStep, setPwStep] = useState('idle') 
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
@@ -177,13 +177,13 @@ export default function Profile() {
         body: JSON.stringify({ alertPreferences: next }),
       })
     } catch {
-      // best-effort; re-sync from server on next load if it silently failed
+      
     } finally {
       setSavingPrefs(false)
     }
   }
 
-  // --- Email change handlers ---
+  
   const requestEmailChange = async () => {
     if (!newEmail.trim()) return
     setEmailBusy(true)
@@ -237,7 +237,7 @@ export default function Profile() {
     setEmailMsg('')
   }
 
-  // --- Password change handlers ---
+  
   const submitPasswordChange = async () => {
     setPwMsg('')
     if (newPw.length < 8) {
@@ -278,7 +278,7 @@ export default function Profile() {
     setPwMsg('')
   }
 
-  // --- Force re-login ---
+  
   const handleForceRelogin = async () => {
     if (!confirmRelogin) {
       setConfirmRelogin(true)
@@ -288,14 +288,14 @@ export default function Profile() {
     try {
       await fetch(`${BACKEND_URL}/api/profile/${user.userId}/force-relogin`, { method: 'POST' })
     } catch {
-      // proceed regardless — worst case they just log back in normally
+      
     } finally {
       logout()
       navigate('/login', { replace: true })
     }
   }
 
-  // --- API key ---
+  
   const handleRegenerateKey = async () => {
     setRegenBusy(true)
     try {
@@ -303,7 +303,7 @@ export default function Profile() {
       const data = await res.json()
       if (res.ok) setProfile((p) => ({ ...p, apiKey: data.apiKey }))
     } catch {
-      // no-op, key stays as-is
+      
     } finally {
       setRegenBusy(false)
     }
@@ -333,7 +333,7 @@ export default function Profile() {
 
   return (
     <div className="pf-page">
-      {/* Identity card */}
+      
       <motion.div className="lm-card pf-identity-card" variants={cardVariants} initial="hidden" animate="show">
         <div className="pf-avatar-wrap">
           {profile.avatarBase64 ? (
@@ -371,7 +371,7 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      {/* Baseline & enrollment */}
+     
       <motion.div className="lm-card" variants={cardVariants} initial="hidden" animate="show" transition={{ delay: 0.05 }}>
         <div className="lm-card-title">Behavioral baseline</div>
         <div className="pf-baseline-row">
@@ -399,7 +399,7 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      {/* Security & alert preferences */}
+     
       <motion.div className="lm-card" variants={cardVariants} initial="hidden" animate="show" transition={{ delay: 0.1 }}>
         <div className="lm-card-title">Security &amp; alerts</div>
         <ToggleRow
@@ -417,7 +417,7 @@ export default function Profile() {
         {savingPrefs && <div className="pf-saving-hint">Saving…</div>}
       </motion.div>
 
-      {/* Account actions */}
+     
       <motion.div className="lm-card" variants={cardVariants} initial="hidden" animate="show" transition={{ delay: 0.15 }}>
         <div className="lm-card-title">Account</div>
 
@@ -473,7 +473,7 @@ export default function Profile() {
 
         {emailMsg && <div className="pf-inline-msg">{emailMsg}</div>}
 
-        {/* Password */}
+       
         <div className="pf-account-row" style={{ marginTop: 18 }}>
           <div className="pf-account-row-text">
             <div className="pf-account-row-label">Password</div>
@@ -522,7 +522,7 @@ export default function Profile() {
 
         {pwMsg && <div className="pf-inline-msg">{pwMsg}</div>}
 
-        {/* Force re-login */}
+     
         <div className="pf-account-row" style={{ marginTop: 18 }}>
           <div className="pf-account-row-text">
             <div className="pf-account-row-label">Force re-login</div>
@@ -540,7 +540,7 @@ export default function Profile() {
         </div>
       </motion.div>
 
-      {/* Developer / integration panel */}
+      
       <motion.div className="lm-card" variants={cardVariants} initial="hidden" animate="show" transition={{ delay: 0.2 }}>
         <div className="lm-card-title">Developer integration</div>
         <div className="pf-dev-sub">Use this key to authenticate BehaviorShield as a service in your own app.</div>

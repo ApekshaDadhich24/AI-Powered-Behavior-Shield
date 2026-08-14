@@ -4,14 +4,9 @@ import { BACKEND_URL } from '../config'
 
 const RESEND_COOLDOWN_S = 30
 
-// Popup dialog used on the login page when an account has been flagged
-// requiresStepUp (i.e. its last session was FORCE_LOGOUT'd for sustained
-// anomalous behavior). Auto-requests an OTP on mount; on successful
-// verification, the backend clears the flag and returns a full login
-// payload — onVerified receives that payload so the caller can complete
-// the login (store user, navigate) exactly like a normal /login response.
+
 export default function StepUpOtpModal({ open, userId, onVerified, onCancel }) {
-  const [stage, setStage] = useState('sending') // sending | input | verifying | error | locked
+  const [stage, setStage] = useState('sending') 
   const [code, setCode] = useState('')
   const [error, setError] = useState('')
   const [cooldown, setCooldown] = useState(0)
@@ -42,7 +37,7 @@ export default function StepUpOtpModal({ open, userId, onVerified, onCancel }) {
     if (!open) return
     setCode('')
     requestOtp()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [open, userId])
 
   useEffect(() => {

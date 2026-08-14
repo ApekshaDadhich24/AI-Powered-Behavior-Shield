@@ -12,8 +12,7 @@ const PASSAGE =
 const TARGET = 150
 const IGNORED_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab', 'Enter'])
 
-// maps a physical key event onto the on-screen keyboard's labels — kept
-// separate from the behavioral capture below, since this is purely visual
+
 function normalizeKey(key) {
   if (key === ' ') return 'Space'
   if (key === 'Backspace') return '⌫'
@@ -56,8 +55,7 @@ export default function EnrollPage() {
     return () => clearInterval(id)
   }, [])
 
-  // Real keystroke capture for the backend — scoped to the hidden input so
-  // it only fires while the person is actually typing into the enroll box.
+  
   useEffect(() => {
     const el = inputRef.current
     const detach = attachKeyListeners(el)
@@ -65,18 +63,13 @@ export default function EnrollPage() {
     return () => { if (detach) detach() }
   }, [attachKeyListeners])
 
-  // Mouse capture — scoped to the whole page so natural pointer movement
-  // is picked up regardless of where the person is looking or hovering,
-  // not just while focused on the typing box.
   useEffect(() => {
     const el = pageRef.current
     const detach = attachMouseListeners(el)
     return () => { if (detach) detach() }
   }, [attachMouseListeners])
 
-  // Lightweight poll to reflect mouse capture progress in the UI. Reading
-  // getEvents() here is cheap (just a length count) and avoids threading
-  // extra state through the mouse handlers themselves.
+
   useEffect(() => {
     const id = setInterval(() => {
       const count = getEvents().filter(e => e.type === 'mouse_move').length
@@ -140,10 +133,7 @@ export default function EnrollPage() {
     setRetryNotice('')
     setSubmitting(true)
     try {
-      // getEvents() returns everything captured so far — both keystrokes
-      // (from the hidden input) and mouse samples (from the page) share
-      // the same underlying event buffer in useBehavior, so both are
-      // included in this one payload automatically.
+    
       const events = getEvents()
       const res = await fetch(`${BACKEND_URL}/api/behavior/enroll/${user.userId}`, {
         method: 'POST',

@@ -10,8 +10,7 @@ const RECONNECT_DELAY_MS = 3000
 const GOOD_VERDICT = 'CLEAR'
 const SCORE_HISTORY_MAX = 40
 
-// Purely informational heads-up, shown a couple frames before the backend's
-// hard termination threshold (7, see behavior.js CONSECUTIVE_TERMINATE_LIMIT).
+
 const WARNING_TRIGGER_FRAMES = 5
 
 const BehaviorSocketContext = createContext(null)
@@ -38,9 +37,7 @@ export function BehaviorSocketProvider({ children }) {
 
   const wsRef = useRef(null)
 
-  // Attached to `document` for the lifetime of the whole dashboard, not
-  // just Live Monitor — behavior should be captured continuously, no
-  // matter which tab is active. This is what makes the auth "continuous".
+  
   useEffect(() => {
     const detach = attachListeners(document)
     return () => { if (detach) detach() }
@@ -150,7 +147,7 @@ export function BehaviorSocketProvider({ children }) {
           ].slice(0, 8))
           setScoreHistory((prev) => [...prev, score ?? 0].slice(-SCORE_HISTORY_MAX))
         } catch (err) {
-          // ignore malformed frames
+          
         }
       }
 
@@ -169,9 +166,7 @@ export function BehaviorSocketProvider({ children }) {
 
     connect()
 
-    // This cleanup only runs when the PROVIDER unmounts — i.e. on real
-    // logout (Dashboard unmounts), not on tab switches (Dashboard stays
-    // mounted, only its children swap).
+ 
     return () => {
       closedByUs = true
       clearInterval(sendInterval)

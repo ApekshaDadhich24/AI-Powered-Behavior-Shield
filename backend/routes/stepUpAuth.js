@@ -5,9 +5,7 @@ const User = require('../models/User');
 const { generateOtp, hashOtp } = require('../utils/otp');
 const { sendOtpEmail } = require('../utils/mailer');
 
-// Sends a fresh OTP to the account's registered email. Used both from the
-// login-gate flow (requiresStepUp === true) and could be reused elsewhere
-// later — it doesn't care why it was called, just who for.
+
 router.post('/step-up/request', async (req, res) => {
   try {
     const { userId } = req.body;
@@ -30,9 +28,7 @@ router.post('/step-up/request', async (req, res) => {
   }
 });
 
-// Verifies the code AND, on success, clears requiresStepUp and returns the
-// same payload a normal /login success would — this endpoint is what
-// actually completes login when the account was gated.
+
 router.post('/step-up/verify', async (req, res) => {
   try {
     const { userId, code } = req.body;

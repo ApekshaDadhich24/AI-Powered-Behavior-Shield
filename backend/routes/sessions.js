@@ -4,7 +4,7 @@ const ScoreEvent = require('../models/ScoreEvent');
 
 const router = express.Router();
 
-// GET /api/sessions/user/:userId — list past sessions for a user, most recent first
+
 router.get('/user/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
@@ -15,7 +15,7 @@ router.get('/user/:userId', async (req, res) => {
   }
 });
 
-// GET /api/sessions/:sessionId/events — full score timeline for one session
+
 router.get('/:sessionId/events', async (req, res) => {
   try {
     const { sessionId } = req.params;

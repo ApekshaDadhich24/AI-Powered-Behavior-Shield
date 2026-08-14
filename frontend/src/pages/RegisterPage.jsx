@@ -4,16 +4,15 @@ import { BACKEND_URL } from '../config'
 import AuthVisualPanel from './AuthVisual'
 import './AuthPage.css'
 
-// --- NEW: same basic format check as the backend — catches typos before
-// the request even goes out.
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-// --- END NEW ---
+
 
 export default function RegisterPage() {
   const navigate = useNavigate()
 
   const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('') // --- NEW ---
+  const [email, setEmail] = useState('') 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -28,13 +27,13 @@ export default function RegisterPage() {
       setError('Username must be at least 3 characters.')
       return
     }
-    // --- NEW: email validation ---
+    
     const trimmedEmail = email.trim()
     if (!EMAIL_REGEX.test(trimmedEmail)) {
       setError('Please enter a valid email address.')
       return
     }
-    // --- END NEW ---
+   
     if (password.length < 6) {
       setError('Password must be at least 6 characters.')
       return
@@ -96,7 +95,7 @@ export default function RegisterPage() {
               />
               <div className="auth-hint">At least 3 characters. Stored lowercase.</div>
             </div>
-            {/* --- NEW: email field --- */}
+            
             <div className="auth-field">
               <label className="auth-label" htmlFor="email">Email</label>
               <input
@@ -110,7 +109,7 @@ export default function RegisterPage() {
               />
               <div className="auth-hint">Used to verify it's you if we ever detect unusual activity.</div>
             </div>
-            {/* --- END NEW --- */}
+            
             <div className="auth-field">
               <label className="auth-label" htmlFor="password">Password</label>
               <input

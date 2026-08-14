@@ -7,8 +7,8 @@ const scoreEventSchema = new mongoose.Schema({
   trustScore: Number,
   riskScore: Number,
   avgRiskScore: Number,
-  decision: String,      // smoothed decision (CLEAR / STEP_UP_AUTH)
-  rawVerdict: String,    // raw AI verdict before smoothing
+  decision: String,      
+  rawVerdict: String,   
   consecutiveBad: Number,
 });
 

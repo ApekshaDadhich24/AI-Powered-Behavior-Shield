@@ -5,10 +5,6 @@
   overflow-x: hidden;
 }
 
-/* Fine background grid — same idea as the auth page's .auth-right-grid,
-   but smaller and much more subtle since it needs to sit behind the whole
-   page (hero, sections, everything) without competing with content or the
-   particle network canvas already running on top of it. */
 .landing::before {
   content: '';
   position: fixed;
@@ -44,8 +40,7 @@
   border-bottom: 0.5px solid rgba(255,255,255,0.06);
 }
 
-/* thin gradient accent line under the whole bar — ties the nav to the brand
-   gradient used in the hero instead of leaving a flat single-color edge */
+
 .nav::after {
   content: '';
   position: absolute;
@@ -95,7 +90,7 @@
 .mobile-menu-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
 .mobile-menu-btns .btn-primary, .mobile-menu-btns .btn-glass { width: 100%; justify-content: center; text-align: center; }
 
-/* HERO — capped max-width so wide monitors don't stretch the columns into empty space */
+
 .hero {
   position: relative;
   z-index: 1;
@@ -111,7 +106,6 @@
 
 .hero-left { padding-right: 20px; position: relative; z-index: 2; }
 
-/* floating data particles that bridge the text column and the helix */
 .hero-bridge {
   position: absolute;
   inset: 0;
@@ -193,7 +187,6 @@
 }
 .dna-canvas { display: block; width: 100%; height: auto; cursor: crosshair; }
 
-/* two layered ambient glows anchored to the helix itself, so they stay correct wherever it's aligned */
 .dna-canvas-wrap::before {
   content: ''; position: absolute; top: 50%; left: 50%; width: 260%; height: 165%;
   transform: translate(-50%, -50%);
@@ -208,8 +201,7 @@
 }
 @keyframes dnaGlowBreathe { 0%,100% { opacity: 0.65; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); } }
 
-/* on desktop, shift the text block toward the helix and pull the helix's column
-   in to meet it — the two moves close the gap from both sides at once */
+
 @media (min-width: 1025px) {
   .hero-left { transform: translateX(56px); }
   .hero-right { justify-content: flex-start; margin-left: -48px; }
@@ -241,9 +233,7 @@
   box-shadow: 0 14px 42px rgba(96,165,250,0.16), 0 0 26px rgba(167,139,250,0.12);
 }
 
-/* other boxes around the page get the same treatment even though they
-   aren't .glass-card — the hero stats strip, the DNA readout, pipeline
-   pills, and the typing-demo stat tiles */
+
 .hero-stats, .dna-stats, .pipeline-strip, .demo-stat {
   transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
@@ -263,7 +253,7 @@
 .stat { border-radius: 10px; transition: background 0.25s ease; }
 .stat:hover { background: rgba(96,165,250,0.06); }
 
-/* SECTIONS */
+
 .how-section, .features-section, .cta-section, .intel-section {
   padding: 100px 52px; position: relative; z-index: 1; max-width: 1360px; margin: 0 auto;
 }
@@ -272,7 +262,7 @@
 .sh-title { font-size: 36px; font-weight: 700; letter-spacing: -1.2px; margin-bottom: 12px; color: var(--text); }
 .sh-sub { font-size: 15px; color: var(--text2); max-width: 560px; margin: 0 auto; }
 
-/* PIPELINE STRIP */
+
 .pipeline-section { position: relative; z-index: 1; padding: 12px 52px 60px; display: flex; justify-content: center; }
 .pipeline-strip {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
@@ -297,7 +287,7 @@
 .pipeline-arrow { color: var(--text3); font-size: 13px; transition: color 0.4s ease; }
 .pipeline-arrow.done { color: #60a5fa; }
 
-/* LIVE TYPING DEMO */
+
 .demo-section { position: relative; z-index: 1; padding: 20px 52px 100px; max-width: 1360px; margin: 0 auto; }
 .demo-panel { max-width: 780px; margin: 0 auto; padding: 32px; }
 
@@ -338,7 +328,7 @@
 
 .demo-note { font-size: 12px; color: var(--text3); line-height: 1.6; }
 
-/* REAL-TIME INTELLIGENCE */
+
 .intel-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .intel-card { position: relative; padding: 22px 20px 20px; overflow: hidden; }
 .intel-bar { position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, rgba(96,165,250,0.7), transparent); }
@@ -360,7 +350,7 @@
 .intel-num { font-size: 28px; font-weight: 700; letter-spacing: -0.8px; color: var(--text); font-variant-numeric: tabular-nums; margin-bottom: 4px; }
 .intel-label { font-size: 12px; color: var(--text3); }
 
-/* STEPS */
+
 .steps { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 960px; margin: 0 auto; }
 .step { padding: 28px; transition: all 0.3s ease; }
 .step-num { font-size: 10px; color: #60a5fa; font-weight: 700; letter-spacing: 0.15em; margin-bottom: 16px; }
@@ -368,7 +358,7 @@
 .step-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: var(--text); }
 .step-desc { font-size: 13px; color: var(--text2); line-height: 1.7; }
 
-/* FEATURES */
+
 .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 960px; margin: 0 auto; }
 .feat { padding: 24px; display: flex; gap: 18px; transition: all 0.3s ease; }
 .feat-icon { font-size: 26px; width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -379,7 +369,7 @@
 .feat-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
 .feat-desc { font-size: 12px; color: var(--text2); line-height: 1.65; }
 
-/* CTA */
+
 .cta-box { padding: 64px 48px; text-align: center; max-width: 700px; margin: 0 auto; position: relative; overflow: hidden; }
 .cta-glow { position: absolute; top: -80px; left: 50%; transform: translateX(-50%); width: 500px; height: 300px; background: radial-gradient(ellipse, rgba(37,99,235,0.08) 0%, transparent 70%); pointer-events: none; animation: breathe 6s ease-in-out infinite; }
 @keyframes breathe { 0%,100% { opacity: 0.6; transform: translateX(-50%) scale(1); } 50% { opacity: 1; transform: translateX(-50%) scale(1.05); } }
@@ -396,7 +386,6 @@
 .footer-link { font-size: 13px; color: var(--text3); cursor: pointer; transition: color 0.2s; }
 .footer-link:hover { color: var(--text2); }
 
-/* ============ RESPONSIVE ============ */
 
 @media (max-width: 1024px) {
   .nav { padding: 14px 32px; }

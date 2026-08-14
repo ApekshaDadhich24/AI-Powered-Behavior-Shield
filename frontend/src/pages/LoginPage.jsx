@@ -16,8 +16,7 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // When a login response comes back with requiresStepUp: true, we stash
-  // the userId here and show the OTP modal instead of navigating in.
+  
   const [pendingStepUpUserId, setPendingStepUpUserId] = useState(null)
 
   const justRegistered = location.state?.registered
@@ -50,9 +49,7 @@ export default function LoginPage() {
         return
       }
 
-      // Password was correct, but this account was force-logged-out for
-      // anomalous behavior and needs OTP verification before a session
-      // is granted. Don't log them in yet — show the modal instead.
+     
       if (data.requiresStepUp) {
         setPendingStepUpUserId(data.userId)
         return

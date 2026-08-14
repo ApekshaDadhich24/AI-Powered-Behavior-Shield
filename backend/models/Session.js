@@ -4,10 +4,6 @@ const sessionSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   startedAt: { type: Date, default: Date.now },
   endedAt: { type: Date, default: null },
-  // 'normal' = user closed tab / logged out normally
-  // 'force_logout_ai' = AI service sent FORCE_LOGOUT directly
-  // 'force_logout_sustained' = Node's own sustained-anomaly counter tripped
-  // 'ai_unavailable' = Python AI backend was unreachable after max reconnects
   endReason: { type: String, enum: ['normal', 'force_logout_ai', 'force_logout_sustained', 'ai_unavailable'], default: null },
   frameCount: { type: Number, default: 0 },
   avgTrustScore: { type: Number, default: null },

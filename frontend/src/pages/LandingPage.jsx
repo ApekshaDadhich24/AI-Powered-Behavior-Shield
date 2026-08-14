@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import './LandingPage.css'
 
-/* ============ ICONS ============ */
+
 
 function MenuIcon({ open }) {
   return (
@@ -25,7 +25,7 @@ function LayersIcon() {
   return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2" /><polyline points="2 17 12 22 22 17" /><polyline points="2 12 12 17 22 12" /></svg>
 }
 
-/* ============ BACKGROUND NETWORK CANVAS ============ */
+
 
 function NetworkCanvas() {
   const canvasRef = useRef(null)
@@ -114,7 +114,7 @@ function NetworkCanvas() {
   return <canvas ref={canvasRef} className="network-canvas" />
 }
 
-/* ============ DNA HELIX (always-on scanning glow + mouse highlight) ============ */
+
 
 const HELIX_BLUE = [96, 165, 250]
 const HELIX_PURPLE = [167, 139, 250]
@@ -126,8 +126,7 @@ function lerp(a, b, t) { return a + (b - a) * t }
 function lerpColor(c1, c2, t) {
   return [lerp(c1[0], c2[0], t), lerp(c1[1], c2[1], t), lerp(c1[2], c2[2], t)]
 }
-// smooth brand-consistent gradient along the strand's length instead of a
-// time-cycling rainbow hue — reads as designed rather than psychedelic
+
 function colorForFrac(frac, reversed) {
   const f = reversed ? 1 - frac : frac
   return f < 0.5 ? lerpColor(HELIX_BLUE, HELIX_PURPLE, f / 0.5) : lerpColor(HELIX_PURPLE, HELIX_CYAN, (f - 0.5) / 0.5)
@@ -169,8 +168,7 @@ function DNAHelix() {
     const draw = () => {
       ctx.clearRect(0, 0, HELIX_W, HELIX_H)
       const cx = HELIX_W / 2, amplitude = 60 + Math.sin(t * 0.25) * 9, freq = 0.033
-      // a slow, continuous scan band that travels the length of the helix
-      // so the strand always looks alive even when nobody is hovering
+     
       const scanY = (Math.sin(t * 0.5) * 0.5 + 0.5) * HELIX_H
       const pts1 = [], pts2 = []
       for (let y = 0; y <= HELIX_H; y += 3) {
@@ -179,9 +177,7 @@ function DNAHelix() {
         pts2.push({ x: cx - Math.sin(phase) * amplitude, y, depth: -Math.cos(phase) })
       }
 
-      // backbone drawn segment-by-segment so width/opacity can respond to
-      // simulated depth — the strand that's "in front" reads brighter and
-      // thicker, the strand curling behind fades back, giving real 3D twist
+    
       const drawStrand = (pts, reversed) => {
         for (let i = 0; i < pts.length - 1; i++) {
           const a = pts[i], b = pts[i + 1]
@@ -197,7 +193,7 @@ function DNAHelix() {
       drawStrand(pts1, false)
       drawStrand(pts2, true)
 
-      // rungs + nucleotide dots, with mouse/scan glow layered on top
+     
       for (let i = 0; i < pts1.length; i += 5) {
         const p1 = pts1[i], p2 = pts2[i]
         const mid = (p1.x + p2.x) / 2
@@ -233,8 +229,7 @@ function DNAHelix() {
         }
       }
 
-      // flowing signal particles riding the strand — echoes the "live data"
-      // motif from the hero bridge, gives the helix a sense of transmission
+      
       const buffer = 20
       const cycle = HELIX_H + buffer * 2
       for (let i = 0; i < 4; i++) {
@@ -270,7 +265,7 @@ function DNAHelix() {
   )
 }
 
-/* animated data particles bridging the text column and the helix */
+
 function HeroBridge() {
   const dots = [0, 1, 2, 3, 4]
   return (
@@ -282,7 +277,7 @@ function HeroBridge() {
   )
 }
 
-/* ============ PIPELINE STRIP ============ */
+
 
 function PipelineStrip() {
   const stages = [
@@ -313,7 +308,6 @@ function PipelineStrip() {
   )
 }
 
-/* ============ REAL-TIME INTELLIGENCE STATS ============ */
 
 function StatCard({ icon, target, decimal, suffix, prefix, label, points, delay, tint }) {
   const [val, setVal] = useState(0)
@@ -369,7 +363,6 @@ function StatsIntelligence() {
   )
 }
 
-/* ============ LIVE TYPING DEMO — the actual product, running client-side ============ */
 
 const IGNORED_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Tab'])
 
@@ -381,7 +374,7 @@ function TypingDemo() {
 
   const handleKeyDown = (e) => {
     if (IGNORED_KEYS.has(e.key)) return
-    if (pressedRef.current[e.code] != null) return // ignore OS key-repeat while held
+    if (pressedRef.current[e.code] != null) return 
     pressedRef.current[e.code] = performance.now()
   }
 
@@ -476,8 +469,6 @@ function TypingDemo() {
     </section>
   )
 }
-
-/* ============ PAGE ============ */
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -616,7 +607,7 @@ export default function LandingPage() {
 
       <StatsIntelligence />
 
-      {/* HOW IT WORKS */}
+   
       <section className="how-section" id="how">
         <motion.div className="section-header" initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
           <div className="sh-label">How it works</div>

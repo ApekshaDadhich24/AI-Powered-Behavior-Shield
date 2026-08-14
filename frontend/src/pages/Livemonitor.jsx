@@ -263,7 +263,7 @@ function PianoStrip() {
       osc.start()
       osc.stop(ctx.currentTime + release + 0.05)
     } catch {
-      // Web Audio not available / blocked — fail silently, visual still works
+      
     }
   }
 
@@ -509,9 +509,7 @@ export default function LiveMonitor() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [calibError, setCalibError] = useState('')
 
-  // Only needed while calibrating — keydowns are counted from a separate,
-  // local event buffer so they don't get tangled up with the shared
-  // continuous-monitoring buffer that lives in BehaviorSocketContext.
+
   useEffect(() => {
     if (!isCalibrating) return
     const detach = attachListeners(document)
@@ -673,7 +671,7 @@ export default function LiveMonitor() {
         )}
       </AnimatePresence>
 
-      {/* HERO — trust gauge is the first thing you see, no scrolling needed */}
+     
       <div className="lm-hero">
         <div className="lm-card lm-hero-card">
           <TrustGauge score={trustScore} />

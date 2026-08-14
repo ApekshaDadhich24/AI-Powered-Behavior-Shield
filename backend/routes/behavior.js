@@ -76,21 +76,12 @@ const setupWebSocket = (server) => {
       .then((doc) => { sessionDoc = doc; })
       .catch((err) => console.log(`Session create failed for user ${userId}:`, err.message));
 
-    // ============ RISK SMOOTHING STATE ============
+   
     const RISK_WINDOW_SIZE = 5;
-    // Drives the softer, avg-based "elevated risk" banner in the UI. Not
-    // used for termination — see sustainedBadFrames below for that.
+   
     const RISK_AVG_THRESHOLD = 50;
 
-    // Hard termination threshold — driven by the AI's raw per-frame
-    // verdict, not the smoothed average (the average rarely reaches
-    // RISK_AVG_THRESHOLD even during genuinely sustained anomalous
-    // behavior, confirmed via real testing). 7 frames at a 2s send cadence
-    // ≈ 14 seconds of sustained anomalous behavior.
     const CONSECUTIVE_TERMINATE_LIMIT = 7;
-    // A single clean frame doesn't wipe the streak back to 0 — it only
-    // partially forgives it, since real anomalous sessions are rarely
-    // perfectly uniform frame-to-frame.
     const DECAY_ON_CLEAR = 2;
     let sustainedBadFrames = 0;
 
@@ -106,10 +97,6 @@ const setupWebSocket = (server) => {
     const MAX_AI_RECONNECT_ATTEMPTS = 5;
     let aiReconnectAttempts = 0;
 
-    // Flags this account so the NEXT login attempt (by anyone — real user
-    // or attacker) is gated behind OTP email verification instead of a
-    // normal password-only login. Fire-and-forget, same pattern as the
-    // other persistence calls in this file — never blocks the ws relay.
     const flagRequiresStepUp = () => {
       User.findByIdAndUpdate(userId, { requiresStepUp: true })
         .catch((err) => console.log(`Failed to set requiresStepUp for user ${userId}:`, err.message));
