@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import StoryDemo from './StoryDemo'
 import './LandingPage.css'
 
 
@@ -525,6 +526,7 @@ export default function LandingPage() {
 
         <div className="nav-links">
           <span className="nav-link" onClick={() => scrollTo('how')}>How it works</span>
+          <span className="nav-link" onClick={() => scrollTo('story-demo')}>Live demo</span>
           <span className="nav-link" onClick={() => scrollTo('features')}>Features</span>
         </div>
 
@@ -541,6 +543,7 @@ export default function LandingPage() {
         {mobileOpen && (
           <motion.div className="mobile-menu" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }}>
             <span className="mobile-link" onClick={() => scrollTo('how')}>How it works</span>
+            <span className="mobile-link" onClick={() => scrollTo('story-demo')}>Live demo</span>
             <span className="mobile-link" onClick={() => scrollTo('features')}>Features</span>
             <div className="mobile-menu-btns">
               <button className="btn-glass" onClick={() => goTo('/login')}>Sign in</button>
@@ -629,6 +632,9 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      {/* LIVE DEMO — laptop mockup running the comic story */}
+      <StoryDemo />
 
       {/* FEATURES */}
       <section className="features-section" id="features">
