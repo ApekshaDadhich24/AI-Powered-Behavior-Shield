@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
 import { useBehavior } from '../hooks/useBehavior'
 import { useBehaviorSocket } from '../context/BehaviorSocketContext'
+
 import { BACKEND_URL } from '../config'
 
 const GOOD_VERDICT = 'CLEAR'
@@ -27,10 +28,6 @@ const BLACK_NOTES = [
   { key: 'y', name: 'G#', freq: 415.3, afterIndex: 4 },
   { key: 'u', name: 'A#', freq: 466.16, afterIndex: 5 },
 ]
-const WK = 52
-const GAP = 4
-const SLOT = WK + GAP
-const BK = 30
 const KEY_COLORS = ['#60a5fa', '#a78bfa', '#22d3ee']
 
 const TUNE = ['a', 'a', 's', 'a', 'f', 'd', 'a', 'a', 's', 'a', 'g', 'f']
@@ -189,6 +186,34 @@ function PianoStrip() {
   const [stepIndex, setStepIndex] = useState(0)
   const [justCompleted, setJustCompleted] = useState(false)
   const [isPreviewing, setIsPreviewing] = useState(false)
+  const [typedLog, setTypedLog] = useState([]) // [{ ch: 'A', correct: true }, ...] — what the user has actually typed
+  const TYPED_LOG_MAX = 28
+
+  // --- responsive key sizing ---
+  const keysOuterRef = useRef(null)
+  const [containerWidth, setContainerWidth] = useState(444)
+
+  useEffect(() => {
+    const el = keysOuterRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width
+        if (w > 0) setContainerWidth(w)
+      }
+    })
+    ro.observe(el)
+    // set initial width immediately too, in case ResizeObserver fires late
+    setContainerWidth(el.getBoundingClientRect().width || 444)
+    return () => ro.disconnect()
+  }, [])
+
+  const NUM_WHITE = WHITE_NOTES.length
+  const GAP = containerWidth < 320 ? 2 : containerWidth < 420 ? 3 : 4
+  const rawWK = (containerWidth - GAP * (NUM_WHITE - 1)) / NUM_WHITE
+  const WK = Math.max(24, Math.min(52, rawWK))
+  const SLOT = WK + GAP
+  const BK = Math.max(14, WK * 0.56)
 
   const audioCtxRef = useRef(null)
   const reverbRef = useRef(null)
@@ -263,7 +288,7 @@ function PianoStrip() {
       osc.start()
       osc.stop(ctx.currentTime + release + 0.05)
     } catch {
-      
+
     }
   }
 
@@ -295,8 +320,14 @@ function PianoStrip() {
         playTone(note.freq)
         setNowPlaying(note.name)
 
+        const matchedTune = note.type === 'white' && k === TUNE[stepIndexRef.current]
+        setTypedLog((log) => {
+          const next = [...log, { ch: k.toUpperCase(), correct: matchedTune }]
+          return next.length > TYPED_LOG_MAX ? next.slice(next.length - TYPED_LOG_MAX) : next
+        })
+
         if (note.type === 'white') {
-          if (k === TUNE[stepIndexRef.current]) {
+          if (matchedTune) {
             const next = stepIndexRef.current + 1
             if (next >= TUNE.length) {
               setJustCompleted(true)
@@ -328,7 +359,7 @@ function PianoStrip() {
     }
   }, [])
 
-  const wrapWidth = WHITE_NOTES.length * SLOT - GAP
+  const wrapWidth = NUM_WHITE * SLOT - GAP
 
   const playPreview = () => {
     const ctx = ensureAudio()
@@ -369,38 +400,54 @@ function PianoStrip() {
         </div>
       </div>
 
-      <div className="lm-piano-keys-wrap" style={{ width: wrapWidth }}>
-        <div className="lm-piano-white-row">
-          {WHITE_NOTES.map((n, i) => (
+      <fieldset className="lm-piano-typed-fieldset">
+        <legend>Your keystrokes</legend>
+        <div className="lm-piano-typed-content">
+          {typedLog.length === 0 ? (
+            <span className="lm-piano-typed-placeholder">Start typing to see your rhythm here…</span>
+          ) : (
+            typedLog.map((t, i) => (
+              <span key={i} className={`lm-piano-typed-char ${t.correct ? 'correct' : ''}`}>{t.ch}</span>
+            ))
+          )}
+          <span className="lm-piano-typed-cursor" />
+        </div>
+      </fieldset>
+
+      <div className="lm-piano-keys-outer" ref={keysOuterRef}>
+        <div className="lm-piano-keys-wrap" style={{ width: wrapWidth }}>
+          <div className="lm-piano-white-row" style={{ gap: GAP }}>
+            {WHITE_NOTES.map((n, i) => (
+              <motion.div
+                key={n.key}
+                className={`lm-key lm-key-white ${activeKeys[n.key] ? 'active' : ''} ${!activeKeys[n.key] && n.key === TUNE[stepIndex] ? 'suggested' : ''}`}
+                style={{ width: WK }}
+                animate={
+                  activeKeys[n.key]
+                    ? { background: '#0b0f1a', boxShadow: `0 0 16px ${KEY_COLORS[i % 3]}99`, y: 3 }
+                    : { background: '#e7ecf5', boxShadow: '0 0 0px rgba(0,0,0,0)', y: 0 }
+                }
+                transition={{ duration: 0.08 }}
+              >
+                <span className="lm-key-note">{n.name}</span>
+                <span className="lm-key-letter">{n.key.toUpperCase()}</span>
+              </motion.div>
+            ))}
+          </div>
+          {BLACK_NOTES.map((n, i) => (
             <motion.div
               key={n.key}
-              className={`lm-key lm-key-white ${activeKeys[n.key] ? 'active' : ''} ${!activeKeys[n.key] && n.key === TUNE[stepIndex] ? 'suggested' : ''}`}
-              style={{ width: WK }}
+              className={`lm-key lm-key-black ${activeKeys[n.key] ? 'active' : ''}`}
+              style={{ width: BK, left: (n.afterIndex + 1) * SLOT - GAP / 2 - BK / 2 }}
               animate={
                 activeKeys[n.key]
-                  ? { background: '#0b0f1a', boxShadow: `0 0 16px ${KEY_COLORS[i % 3]}99`, y: 3 }
-                  : { background: '#e7ecf5', boxShadow: '0 0 0px rgba(0,0,0,0)', y: 0 }
+                  ? { background: '#f1f5f9', boxShadow: `0 0 14px ${KEY_COLORS[i % 3]}cc`, y: 2 }
+                  : { background: '#0a0e18', boxShadow: '0 0 0px rgba(0,0,0,0)', y: 0 }
               }
               transition={{ duration: 0.08 }}
-            >
-              <span className="lm-key-note">{n.name}</span>
-              <span className="lm-key-letter">{n.key.toUpperCase()}</span>
-            </motion.div>
+            />
           ))}
         </div>
-        {BLACK_NOTES.map((n, i) => (
-          <motion.div
-            key={n.key}
-            className={`lm-key lm-key-black ${activeKeys[n.key] ? 'active' : ''}`}
-            style={{ width: BK, left: (n.afterIndex + 1) * SLOT - GAP / 2 - BK / 2 }}
-            animate={
-              activeKeys[n.key]
-                ? { background: '#f1f5f9', boxShadow: `0 0 14px ${KEY_COLORS[i % 3]}cc`, y: 2 }
-                : { background: '#0a0e18', boxShadow: '0 0 0px rgba(0,0,0,0)', y: 0 }
-            }
-            transition={{ duration: 0.08 }}
-          />
-        ))}
       </div>
 
       <div className="lm-piano-nowplaying">Now playing: <b>{nowPlaying ?? '—'}</b></div>
@@ -427,17 +474,43 @@ function PianoStrip() {
   )
 }
 
+const SCRIBBLE_COLORS = [
+  { id: 'rainbow', label: 'Rainbow', swatch: 'linear-gradient(135deg,#60a5fa,#a78bfa,#22d3ee)' },
+  { id: '#22d3ee', label: 'Cyan', swatch: '#22d3ee' },
+  { id: '#a78bfa', label: 'Violet', swatch: '#a78bfa' },
+  { id: '#f472b6', label: 'Pink', swatch: '#f472b6' },
+  { id: '#f1f5f9', label: 'White', swatch: '#f1f5f9' },
+]
+
 function ScribblePad() {
   const canvasRef = useRef(null)
+  const ctxRef = useRef(null)
   const drawingRef = useRef(false)
   const lastPosRef = useRef(null)
   const rafRef = useRef(null)
   const hueRef = useRef(200)
+  const colorRef = useRef(null) // null = rainbow hue-cycle, else a fixed hex color
+
+  const [activeColor, setActiveColor] = useState('rainbow')
+
+  const pickColor = (id) => {
+    colorRef.current = id === 'rainbow' ? null : id
+    setActiveColor(id)
+  }
+
+  const clearCanvas = () => {
+    const canvas = canvasRef.current
+    const ctx = ctxRef.current
+    if (!canvas || !ctx) return
+    const rect = canvas.getBoundingClientRect()
+    ctx.clearRect(0, 0, rect.width, rect.height)
+  }
 
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
+    ctxRef.current = ctx
     const dpr = window.devicePixelRatio || 1
 
     const resize = () => {
@@ -466,8 +539,12 @@ function ScribblePad() {
       if (!drawingRef.current || !lastPosRef.current) return
       const [x, y] = pos(e)
       const [lx, ly] = lastPosRef.current
-      hueRef.current = (hueRef.current + 1.4) % 360
-      ctx.strokeStyle = `hsl(${hueRef.current}, 85%, 65%)`
+      if (colorRef.current) {
+        ctx.strokeStyle = colorRef.current
+      } else {
+        hueRef.current = (hueRef.current + 1.4) % 360
+        ctx.strokeStyle = `hsl(${hueRef.current}, 85%, 65%)`
+      }
       ctx.lineWidth = 2.4
       ctx.lineCap = 'round'
       ctx.beginPath()
@@ -495,6 +572,22 @@ function ScribblePad() {
     <div className="lm-scribble">
       <div className="lm-card-title">Scribble pad</div>
       <div className="lm-scribble-sub">Doodle while you think — trails fade on their own</div>
+      <div className="lm-scribble-toolbar">
+        {SCRIBBLE_COLORS.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            className={`lm-scribble-swatch ${activeColor === c.id ? 'active' : ''}`}
+            style={{ background: c.swatch }}
+            title={c.label}
+            aria-label={`Pen color: ${c.label}`}
+            onClick={() => pickColor(c.id)}
+          />
+        ))}
+        <button type="button" className="lm-scribble-clear" onClick={clearCanvas}>
+          Clear
+        </button>
+      </div>
       <canvas ref={canvasRef} className="lm-scribble-canvas" />
     </div>
   )
@@ -671,7 +764,7 @@ export default function LiveMonitor() {
         )}
       </AnimatePresence>
 
-     
+
       <div className="lm-hero">
         <div className="lm-card lm-hero-card">
           <TrustGauge score={trustScore} />
@@ -690,7 +783,7 @@ export default function LiveMonitor() {
         <span>↓ Scroll down and interact with the page — your rhythm shapes the score</span>
       </div>
 
-      <div style={{ textAlign: 'center', fontSize: 13, color: '#64748b', maxWidth: 640, margin: '0 auto 12px' }}>
+      <div className="lm-signals-blurb">
         These widgets generate real typing &amp; mouse behavior — the same signals a bank or workplace system could use to continuously verify it's really you.
       </div>
 

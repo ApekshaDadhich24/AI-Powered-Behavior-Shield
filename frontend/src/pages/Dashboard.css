@@ -101,14 +101,14 @@
 .lm-lockout-banner {
   font-size: 13px; color: #fb7185; background: rgba(244,63,94,0.08);
   border: 0.5px solid rgba(244,63,94,0.25); border-radius: 10px;
-  padding: 12px 16px; margin-bottom: 18px; max-width: 1000px;
+  padding: 12px 16px; margin: 0 auto 18px; max-width: 1200px;
 }
 
 .lm-review-banner {
   font-size: 13px; color: var(--text2); background: rgba(245,158,11,0.06);
   border: 0.5px solid rgba(245,158,11,0.22); border-left: 3px solid #f59e0b;
   border-radius: 10px;
-  padding: 12px 16px; margin-bottom: 18px; max-width: 1000px; line-height: 1.6;
+  padding: 12px 16px; margin: 0 auto 18px; max-width: 1200px; line-height: 1.6;
 }
 
 .lm-card {
@@ -124,7 +124,7 @@
 
 /* ============ HERO (trust gauge) ============ */
 
-.lm-hero { max-width: 1000px; margin-bottom: 14px; }
+.lm-hero { max-width: 1200px; margin: 0 auto 14px; }
 
 .lm-hero-card {
   display: flex;
@@ -142,16 +142,25 @@
 }
 
 .lm-scroll-hint {
-  max-width: 1000px;
+  max-width: 1200px;
+  margin: 0 auto 12px;
   text-align: center;
   font-size: 12px;
   color: var(--text3);
-  margin-bottom: 20px;
   animation: lmScrollBounce 1.8s ease-in-out infinite;
 }
 @keyframes lmScrollBounce {
   0%, 100% { transform: translateY(0); opacity: 0.7; }
   50% { transform: translateY(4px); opacity: 1; }
+}
+
+/* paragraph under the scroll hint: "These widgets generate real typing & mouse behavior..." */
+.lm-signals-blurb {
+  max-width: 640px;
+  margin: 0 auto 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text3);
 }
 
 .lm-hero-side {
@@ -242,15 +251,17 @@
   display: grid;
   grid-template-columns: 1.3fr 0.7fr;
   gap: 20px;
-  max-width: 1000px;
-  margin-bottom: 20px;
+  max-width: 1200px;
+  margin: 0 auto 20px;
 }
 
 .lm-piano-card {
   display: flex; flex-direction: column; align-items: center;
+  min-width: 0; /* allow grid item to shrink below content size */
   animation: lmCardGlow 6s ease-in-out infinite;
 }
 .lm-scribble-card {
+  min-width: 0;
   animation: lmCardGlow 6s ease-in-out infinite reverse;
 }
 @keyframes lmCardGlow {
@@ -260,7 +271,7 @@
   100% { box-shadow: 0 10px 32px rgba(0,0,0,0.16), 0 0 24px rgba(96,165,250,0.28); }
 }
 .lm-piano { width: 100%; display: flex; flex-direction: column; align-items: center; }
-.lm-piano-label { font-size: 11.5px; color: var(--text3); margin-bottom: 14px; letter-spacing: 0.02em; }
+.lm-piano-label { font-size: 11.5px; color: var(--text3); margin-bottom: 14px; letter-spacing: 0.02em; text-align: center; }
 
 .lm-piano-tune {
   width: 100%;
@@ -278,6 +289,7 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .lm-piano-preview-btn {
   font-family: var(--font-mono);
@@ -335,13 +347,81 @@
   50% { box-shadow: inset 0 0 0 2px rgba(34,211,238,0.6); }
 }
 
-.lm-piano-keys-wrap { position: relative; height: 130px; margin-bottom: 14px; }
-.lm-piano-white-row { display: flex; gap: 4px; }
+/* --- Typed-letters display (matches keystrokes against the suggested tune) --- */
+.lm-piano-typed-fieldset {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto 16px;
+  padding: 8px 14px 12px;
+  border: 1px solid rgba(34,211,238,0.3);
+  border-radius: 10px;
+  background: rgba(34,211,238,0.03);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.lm-piano-typed-fieldset:focus-within,
+.lm-piano-typed-fieldset:has(.lm-piano-typed-char.correct:last-of-type) {
+  border-color: rgba(34,211,238,0.6);
+  box-shadow: 0 0 14px rgba(34,211,238,0.15);
+}
+.lm-piano-typed-fieldset legend {
+  padding: 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lm-piano-typed-content {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.5;
+  min-height: 20px;
+  color: var(--text2);
+  letter-spacing: 0.04em;
+  word-break: break-all;
+  white-space: pre-wrap;
+}
+.lm-piano-typed-char { color: var(--text3); }
+.lm-piano-typed-char.correct {
+  color: #22d3ee;
+  text-shadow: 0 0 8px rgba(34,211,238,0.55);
+}
+.lm-piano-typed-placeholder {
+  color: var(--text3);
+  opacity: 0.65;
+  font-style: italic;
+}
+.lm-piano-typed-cursor {
+  display: inline-block;
+  width: 1.5px;
+  height: 13px;
+  margin-left: 2px;
+  vertical-align: middle;
+  background: #22d3ee;
+  animation: lmTypedCursorBlink 1s steps(1) infinite;
+}
+@keyframes lmTypedCursorBlink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+/* Outer wrapper the JS measures with ResizeObserver to size keys responsively */
+.lm-piano-keys-outer {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  justify-content: center;
+}
+
+.lm-piano-keys-wrap { position: relative; height: 130px; margin-bottom: 14px; max-width: 100%; }
+.lm-piano-white-row { display: flex; }
 
 .lm-key {
   border-radius: 0 0 6px 6px;
   cursor: default;
   user-select: none;
+  flex-shrink: 0;
 }
 .lm-key-white {
   height: 130px;
@@ -406,7 +486,46 @@
 
 /* --- Scribble pad --- */
 .lm-scribble-card { display: flex; flex-direction: column; }
+/* .lm-scribble is the direct child rendered by <ScribblePad/> — it must itself be a flex
+   column with flex:1 so its canvas's flex:1 has a flex parent to grow inside, otherwise
+   the canvas falls back to a small default height and leaves dead space in the taller card. */
+.lm-scribble {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0; /* allow the flex child (canvas) to shrink/grow correctly */
+}
 .lm-scribble-sub { font-size: 11.5px; color: var(--text3); margin-bottom: 14px; }
+
+.lm-scribble-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.lm-scribble-swatch {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.lm-scribble-swatch:hover { transform: scale(1.15); }
+.lm-scribble-swatch.active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.22);
+}
+.lm-scribble-clear {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 700;
+  padding: 4px 11px; border-radius: 10px; cursor: pointer;
+  background: rgba(255,255,255,0.04); border: 0.5px solid rgba(255,255,255,0.15);
+  color: var(--text3);
+}
+.lm-scribble-clear:hover { color: var(--text2); background: rgba(255,255,255,0.08); }
+
 .lm-scribble-canvas {
   flex: 1;
   min-height: 160px;
@@ -428,7 +547,8 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 20px;
-  max-width: 1000px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 
@@ -501,10 +621,25 @@
   .lm-hero-card { flex-direction: column; gap: 20px; }
 }
 
+/* Extra-narrow phones: shrink piano key labels so text doesn't overflow tiny keys */
+@media (max-width: 420px) {
+  .lm-key-note { font-size: 9.5px; }
+  .lm-key-letter { font-size: 7.5px; }
+  .lm-piano-keys-wrap { height: 108px; }
+  .lm-key-white { height: 108px; padding-bottom: 6px; }
+  .lm-key-black { height: 64px; }
+}
+
+@media (max-width: 340px) {
+  .lm-key-note { font-size: 8.5px; }
+  .lm-key-letter { font-size: 0; }  /* hide the small keyboard-letter hint at the tightest widths */
+}
+
 @media (prefers-reduced-motion: reduce) {
   .status-dot, .lm-signal-dot.on { animation: none !important; }
   .lm-hero-card, .lm-scroll-hint { animation: none !important; }
   .lm-tune-key.current, .lm-key-white.suggested { animation: none !important; }
+  .lm-piano-typed-cursor { animation: none !important; opacity: 1; }
 }
 /* ============ SESSION ANALYTICS ============ */
 

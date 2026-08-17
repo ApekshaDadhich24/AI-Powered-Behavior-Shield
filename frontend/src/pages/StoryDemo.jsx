@@ -15,7 +15,7 @@ import img10 from '../assets/story/panel-10-platform.png'
 
 const PANEL_IMAGES = [img1, img2, img3, img4, img5, img6, img7, img8, img9, img10]
 
-/* ---------- palette (matches LandingPage.css tokens) ---------- */
+
 const C = {
   blue: '#60a5fa',
   purple: '#a78bfa',
@@ -31,7 +31,7 @@ const C = {
   text3: '#64748b',
 }
 
-/* ---------- slide data ---------- */
+
 const SLIDES = [
   { img: PANEL_IMAGES[0], score: 98, hud: 'Session normal', badge: 'Baseline established', color: 'blue',
     eyebrow: 'The story of a stolen session', h: 'Meet Aditi.',
@@ -120,7 +120,7 @@ export default function StoryDemo() {
   useEffect(() => {
     if (current < SLIDES.length - 1) startSegment(DURATION)
     return () => clearTimeout(timerRef.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [current])
 
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function StoryDemo() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [current])
 
   const onPointerDown = (e) => {
